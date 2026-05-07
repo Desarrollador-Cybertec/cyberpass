@@ -13,7 +13,9 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'CyberPass'),
+
+    'credential_encryption_key' => env('CREDENTIAL_ENCRYPTION_KEY'),
 
     /*
     |--------------------------------------------------------------------------
