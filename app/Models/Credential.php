@@ -1,0 +1,58 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Credential extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = [
+        'asset_id',
+        'organization_id',
+        'created_by',
+        'name',
+        'username',
+        'encrypted_password',
+        'iv',
+        'notes_encrypted',
+        'iv_notes',
+        'type',
+    ];
+
+    protected $hidden = [
+        'encrypted_password',
+        'iv',
+        'notes_encrypted',
+        'iv_notes',
+    ];
+
+    public function asset(): BelongsTo
+    {
+        return $this->belongsTo(Asset::class);
+    }
+
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function versions(): HasMany
+    {
+        return $this->hasMany(CredentialVersion::class);
+    }
+
+    public function sharedTokens(): HasMany
+    {
+        return $this->hasMany(SharedAccessToken::class);
+    }
+}
