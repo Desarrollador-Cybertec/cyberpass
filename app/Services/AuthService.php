@@ -8,9 +8,11 @@ use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
+use PragmaRX\Google2FA\Google2FA;
 
 class AuthService
 {
+    public function __construct(private Google2FA $google2fa) {}
     public function register(array $data): array
     {
         $user = User::create([
@@ -72,7 +74,7 @@ class AuthService
 
         $user = User::findOrFail($userId);
 
-        if (! app(\PragmaRX\Google2FA\Google2FA::class)->verifyKey($user->two_factor_secret, $otp)) {
+        if (! $this->google2fa->verifyKey($user->two_factor_secret, $otp)) {
             throw ValidationException::withMessages([
                 'otp' => ['Código OTP incorrecto.'],
             ]);

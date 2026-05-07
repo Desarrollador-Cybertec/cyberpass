@@ -29,24 +29,55 @@ composer require laravel/sanctum laravel/socialite pragmarx/google2fa-laravel ba
 
 ## Variables de entorno requeridas
 
-```env
-# Base de datos (Supabase)
-DB_CONNECTION=pgsql
-DB_HOST=your-supabase-host.supabase.co
-DB_PORT=5432
-DB_DATABASE=postgres
-DB_USERNAME=postgres
-DB_PASSWORD=your-supabase-password
-DB_SSLMODE=require
+### Estado actual
 
-# Google OAuth
+| Variable | Estado |
+|----------|--------|
+| `DB_CONNECTION` | ✅ Configurada |
+| `DB_URL` | ✅ Configurada (Supabase session pooler) |
+| `GOOGLE_CLIENT_ID` | ⏳ Pendiente |
+| `GOOGLE_CLIENT_SECRET` | ⏳ Pendiente |
+| `GOOGLE_REDIRECT_URI` | ⏳ Pendiente |
+| `CREDENTIAL_ENCRYPTION_KEY` | ⏳ Pendiente |
+
+### Conexión Supabase (session pooler)
+
+Solo 2 variables. La URL incluye host, puerto, usuario y password:
+
+```env
+DB_CONNECTION=pgsql
+DB_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+```
+
+> Obtenla en: Supabase Dashboard → Project Settings → Database → Connection string → **Session pooler**
+
+`sslmode=require` está fijo en `config/database.php` — no necesita variable de entorno.
+
+### Google OAuth
+
+Necesitas crear un proyecto en [Google Cloud Console](https://console.cloud.google.com) → APIs & Services → Credentials → OAuth 2.0 Client ID.
+
+```env
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 GOOGLE_REDIRECT_URI=http://cyberpass-api.test/api/auth/google/callback
-
-# Cifrado de credenciales (clave base64 de exactamente 32 bytes)
-CREDENTIAL_ENCRYPTION_KEY=your-32-byte-base64-key
 ```
+
+En Authorized redirect URIs de Google debes registrar exactamente el valor de `GOOGLE_REDIRECT_URI`.
+
+### Clave de cifrado de credenciales
+
+Genera una clave aleatoria de 32 bytes en base64:
+
+```bash
+openssl rand -base64 32
+```
+
+```env
+CREDENTIAL_ENCRYPTION_KEY=<output del comando anterior>
+```
+
+> ⚠️ Esta clave cifra todas las contraseñas almacenadas. Si la pierdes, las credenciales son irrecuperables. Guárdala en un gestor de secretos.
 
 ---
 
