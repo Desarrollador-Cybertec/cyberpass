@@ -47,7 +47,7 @@ class AuthService
 
         $this->syncEnterpriseOrganization($user);
 
-        if ($user->isEnterprise() && $user->two_factor_enabled) {
+        if ($user->two_factor_enabled) {
             return [
                 'requires_2fa' => true,
                 'temp_token'   => TwoFactorPendingStore::store($user->id),
@@ -108,7 +108,7 @@ class AuthService
         return [
             'user'               => $user->load('organization'),
             'token'              => $user->createToken('api')->plainTextToken,
-            'requires_2fa_setup' => $user->isEnterprise() && ! $user->two_factor_enabled,
+            'requires_2fa_setup' => ! $user->two_factor_enabled,
         ];
     }
 

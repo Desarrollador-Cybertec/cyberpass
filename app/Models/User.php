@@ -76,6 +76,6 @@ class User extends Authenticatable
 
     public function requires2FA(): bool
     {
-        return $this->isEnterprise() && ! $this->two_factor_enabled;
+        return ! $this->two_factor_enabled;
     }
 }
