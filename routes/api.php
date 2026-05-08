@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\OrganizationDivisionController;
 use App\Http\Controllers\OrganizationDomainController;
 use App\Http\Controllers\OrganizationUserController;
 use Illuminate\Support\Facades\Route;
@@ -60,5 +61,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::apiResource('users', OrganizationUserController::class)
             ->only(['index', 'store', 'update', 'destroy']);
+
+        Route::apiResource('divisions', OrganizationDivisionController::class);
     });
 });

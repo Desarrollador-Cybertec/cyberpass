@@ -443,10 +443,57 @@ routes/api.php               (12 rutas nuevas)
 
 ---
 
+### Divisiones
+
+| Método | Ruta | Rol mínimo | Descripción |
+|--------|------|-----------|-------------|
+| GET | `/api/organizations/{org}/divisions` | sysadmin / org_admin | Lista divisiones |
+| POST | `/api/organizations/{org}/divisions` | sysadmin / org_admin | Crea división |
+| GET | `/api/organizations/{org}/divisions/{division}` | sysadmin / org_admin | Detalle de división |
+| PUT | `/api/organizations/{org}/divisions/{division}` | sysadmin / org_admin | Actualiza división |
+| DELETE | `/api/organizations/{org}/divisions/{division}` | sysadmin / org_admin | Soft delete división |
+
+> Las divisiones agrupan categorías dentro de una organización (ej: Equipos, Redes, Plataforma, Seguridad Física, Periféricos).
+
+---
+
+## Jerarquía de recursos
+
+```
+Organization
+  └── Division          (equipos, redes, plataforma, seguridad física, periféricos…)
+        └── Category
+              └── Subcategory
+                    └── Asset
+                          └── Credential
+```
+
+---
+
+## Archivos creados (divisiones)
+
+```
+app/
+  Models/Division.php
+  Http/
+    Requests/Organization/
+      CreateDivisionRequest.php
+      UpdateDivisionRequest.php
+    Resources/
+      DivisionResource.php
+    Controllers/
+      OrganizationDivisionController.php
+database/migrations/
+  2026_05_08_213054_create_divisions_table.php
+  2026_05_08_213059_add_division_id_to_categories_table.php
+```
+
+---
+
 ## Siguiente fase
 
 **Fase 3 — Jerarquía de Assets**
-- CRUD de categorías (por organización)
+- CRUD de categorías (por división)
 - CRUD de subcategorías
 - CRUD de assets con metadata JSONB
 - Políticas de acceso por organización

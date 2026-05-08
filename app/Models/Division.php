@@ -7,15 +7,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Category extends Model
+class Division extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
         'organization_id',
-        'division_id',
         'name',
         'description',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     public function organization(): BelongsTo
@@ -23,13 +27,8 @@ class Category extends Model
         return $this->belongsTo(Organization::class);
     }
 
-    public function division(): BelongsTo
+    public function categories(): HasMany
     {
-        return $this->belongsTo(Division::class);
-    }
-
-    public function subcategories(): HasMany
-    {
-        return $this->hasMany(Subcategory::class);
+        return $this->hasMany(Category::class);
     }
 }

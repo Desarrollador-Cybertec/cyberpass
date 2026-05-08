@@ -36,6 +36,11 @@ class Organization extends Model
         return $this->hasMany(OrganizationDomain::class);
     }
 
+    public function divisions(): HasMany
+    {
+        return $this->hasMany(Division::class);
+    }
+
     public function categories(): HasMany
     {
         return $this->hasMany(Category::class);

@@ -45,4 +45,10 @@ class OrganizationPolicy
         return $user->isSysAdmin()
             || ($user->role === 'org_admin' && $user->organization_id === $organization->id);
     }
+
+    public function manageDivisions(User $user, Organization $organization): bool
+    {
+        return $user->isSysAdmin()
+            || ($user->role === 'org_admin' && $user->organization_id === $organization->id);
+    }
 }

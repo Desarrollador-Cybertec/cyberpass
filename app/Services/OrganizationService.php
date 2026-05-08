@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Division;
 use App\Models\Organization;
 use App\Models\OrganizationDomain;
 use App\Models\User;
@@ -74,5 +75,22 @@ class OrganizationService
     public function removeUser(User $user): void
     {
         $user->update(['organization_id' => null, 'account_type' => 'personal']);
+    }
+
+    public function createDivision(Organization $organization, array $data): Division
+    {
+        return $organization->divisions()->create($data);
+    }
+
+    public function updateDivision(Division $division, array $data): Division
+    {
+        $division->update($data);
+
+        return $division->fresh();
+    }
+
+    public function deleteDivision(Division $division): void
+    {
+        $division->delete();
     }
 }
