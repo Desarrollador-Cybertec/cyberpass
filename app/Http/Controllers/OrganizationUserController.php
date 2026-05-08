@@ -1,0 +1,65 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\Organization\InviteUserRequest;
+use App\Http\Requests\Organization\UpdateUserRoleRequest;
+use App\Http\Resources\OrganizationUserResource;
+use App\Models\Organization;
+use App\Models\User;
+use App\Services\AuditService;
+use App\Services\OrganizationService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class OrganizationUserController extends Controller
+{
+    public function __construct(
+        private OrganizationService $service,
+        private AuditService $audit,
+    ) {}
+
+    public function index(Request $request, Organization $organization): JsonResponse
+    {
+        $this->authorize('manageUsers', $organization);
+
+        $users = $organization->users()->latest()->paginate(20);
+
+        return response()->json(OrganizationUserResource::collection($users)->response()->getData(true));
+    }
+
+    public function store(InviteUserRequest $request, Organization $organization): JsonResponse
+    {
+        $user = $this->service->inviteUser($organization, $request->validated());
+
+        $this->audit->log($request->user(), 'assign', User::class, $user->id, [
+            'organization_id' => $organization->id,
+            'role'            => $user->role,
+        ]);
+
+        return response()->json(new OrganizationUserResource($user), 201);
+    }
+
+    public function update(UpdateUserRoleRequest $request, Organization $organization, User $user): JsonResponse
+    {
+        abort_if($user->organization_id !== $organization->id, 404);
+
+        $user = $this->service->updateUser($user, $request->validated());
+
+        $this->audit->log($request->user(), 'update', User::class, $user->id);
+
+        return response()->json(new OrganizationUserResource($user));
+    }
+
+    public function destroy(Request $request, Organization $organization, User $user): JsonResponse
+    {
+        $this->authorize('delete', $user);
+        abort_if($user->organization_id !== $organization->id, 404);
+
+        $this->service->deactivateUser($user);
+
+        $this->audit->log($request->user(), 'delete', User::class, $user->id);
+
+        return response()->json(['message' => 'Usuario desactivado.']);
+    }
+}

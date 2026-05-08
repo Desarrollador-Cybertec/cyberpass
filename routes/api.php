@@ -3,6 +3,9 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\TwoFactorController;
+use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\OrganizationDomainController;
+use App\Http\Controllers\OrganizationUserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,6 +30,12 @@ Route::prefix('auth')->group(function () {
 */
 
 Route::middleware('auth:sanctum')->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Auth
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
@@ -36,5 +45,20 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('enable', [TwoFactorController::class, 'enable']);
             Route::post('disable', [TwoFactorController::class, 'disable']);
         });
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Organizations
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('organizations', OrganizationController::class);
+
+    Route::prefix('organizations/{organization}')->group(function () {
+        Route::apiResource('domains', OrganizationDomainController::class)
+            ->only(['index', 'store', 'destroy']);
+
+        Route::apiResource('users', OrganizationUserController::class)
+            ->only(['index', 'store', 'update', 'destroy']);
     });
 });

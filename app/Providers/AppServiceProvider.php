@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Organization;
+use App\Models\User;
+use App\Policies\OrganizationPolicy;
+use App\Policies\UserPolicy;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -19,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        Gate::policy(Organization::class, OrganizationPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
     }
 }
