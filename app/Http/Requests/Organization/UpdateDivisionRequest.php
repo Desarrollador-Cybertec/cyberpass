@@ -17,6 +17,7 @@ class UpdateDivisionRequest extends FormRequest
             'name'        => ['sometimes', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'is_active'   => ['sometimes', 'boolean'],
+            'image_id'    => ['sometimes', 'nullable', 'integer', 'exists:images,id'],
         ];
     }
 }

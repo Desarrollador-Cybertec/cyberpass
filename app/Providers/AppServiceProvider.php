@@ -4,10 +4,12 @@ namespace App\Providers;
 
 use App\Models\Category;
 use App\Models\Credential;
+use App\Models\Image;
 use App\Models\Organization;
 use App\Models\User;
 use App\Policies\CategoryPolicy;
 use App\Policies\CredentialPolicy;
+use App\Policies\ImagePolicy;
 use App\Policies\OrganizationPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -32,5 +34,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Credential::class, CredentialPolicy::class);
+        Gate::policy(Image::class, ImagePolicy::class);
     }
 }

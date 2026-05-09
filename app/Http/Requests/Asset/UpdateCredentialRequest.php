@@ -20,6 +20,7 @@ class UpdateCredentialRequest extends FormRequest
             'password' => ['sometimes', 'string', 'max:5000'],
             'notes'    => ['sometimes', 'nullable', 'string', 'max:5000'],
             'type'     => ['sometimes', Rule::in(['password', 'api_key', 'ssh', 'certificate', 'other'])],
+            'image_id' => ['sometimes', 'nullable', 'integer', 'exists:images,id'],
         ];
     }
 }

@@ -14,6 +14,7 @@ class Category extends Model
     protected $fillable = [
         'organization_id',
         'division_id',
+        'image_id',
         'name',
         'description',
     ];
@@ -31,5 +32,10 @@ class Category extends Model
     public function credentials(): HasMany
     {
         return $this->hasMany(Credential::class);
+    }
+
+    public function image(): BelongsTo
+    {
+        return $this->belongsTo(Image::class);
     }
 }

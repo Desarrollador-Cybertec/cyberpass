@@ -26,6 +26,7 @@ class CredentialService
             'category_id'        => $category->id,
             'organization_id'    => $organization->id,
             'created_by'         => $creator->id,
+            'image_id'           => $data['image_id'] ?? null,
             'name'               => $data['name'],
             'username'           => $data['username'] ?? null,
             'encrypted_password' => $encPwd,

@@ -15,6 +15,7 @@ class Credential extends Model
         'category_id',
         'organization_id',
         'created_by',
+        'image_id',
         'name',
         'username',
         'encrypted_password',
@@ -38,6 +39,11 @@ class Credential extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function image(): BelongsTo
+    {
+        return $this->belongsTo(Image::class);
     }
 
     public function organization(): BelongsTo

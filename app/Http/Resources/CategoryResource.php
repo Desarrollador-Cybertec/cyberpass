@@ -14,6 +14,11 @@ class CategoryResource extends JsonResource
             'name'        => $this->name,
             'description' => $this->description,
             'division_id' => $this->division_id,
+            'image'       => $this->when($this->image_id !== null, [
+                'id'   => $this->image_id,
+                'name' => $this->whenLoaded('image', fn () => $this->image->name),
+                'url'  => $this->whenLoaded('image', fn () => $this->image->url),
+            ]),
             'created_at'  => $this->created_at,
         ];
     }

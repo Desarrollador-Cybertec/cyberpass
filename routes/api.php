@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CredentialController;
+use App\Http\Controllers\ImageController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationDivisionController;
 use App\Http\Controllers\OrganizationDomainController;
@@ -77,4 +78,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('categories/{category}')->group(function () {
         Route::apiResource('credentials', CredentialController::class);
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Images — Catálogo global del sistema
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('images', ImageController::class);
 });

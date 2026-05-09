@@ -16,6 +16,7 @@ class Division extends Model
         'name',
         'description',
         'is_active',
+        'image_id',
     ];
 
     protected $casts = [
@@ -30,5 +31,10 @@ class Division extends Model
     public function categories(): HasMany
     {
         return $this->hasMany(Category::class);
+    }
+
+    public function image(): BelongsTo
+    {
+        return $this->belongsTo(Image::class);
     }
 }

@@ -17,6 +17,7 @@ class UpdateCategoryRequest extends FormRequest
             'name'        => ['sometimes', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'division_id' => ['sometimes', 'nullable', 'integer', 'exists:divisions,id'],
+            'image_id'    => ['sometimes', 'nullable', 'integer', 'exists:images,id'],
         ];
     }
 }
