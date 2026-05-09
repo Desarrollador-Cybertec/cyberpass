@@ -6,11 +6,13 @@ use App\Models\Category;
 use App\Models\Credential;
 use App\Models\Image;
 use App\Models\Organization;
+use App\Models\SharedAccessToken;
 use App\Models\User;
 use App\Policies\CategoryPolicy;
 use App\Policies\CredentialPolicy;
 use App\Policies\ImagePolicy;
 use App\Policies\OrganizationPolicy;
+use App\Policies\SharedAccessTokenPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -35,5 +37,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Credential::class, CredentialPolicy::class);
         Gate::policy(Image::class, ImagePolicy::class);
+        Gate::policy(SharedAccessToken::class, SharedAccessTokenPolicy::class);
     }
 }

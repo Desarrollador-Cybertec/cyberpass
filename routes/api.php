@@ -10,6 +10,8 @@ use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationDivisionController;
 use App\Http\Controllers\OrganizationDomainController;
 use App\Http\Controllers\OrganizationUserController;
+use App\Http\Controllers\PublicTokenController;
+use App\Http\Controllers\SharedAccessTokenController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -85,4 +87,23 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::apiResource('images', ImageController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Shared Access Tokens (scoped to credential)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('credentials/{credential}')->group(function () {
+        Route::get('tokens', [SharedAccessTokenController::class, 'index']);
+        Route::post('tokens', [SharedAccessTokenController::class, 'store']);
+        Route::patch('tokens/{token}/revoke', [SharedAccessTokenController::class, 'revoke']);
+    });
 });
+
+/*
+|--------------------------------------------------------------------------
+| Public — Shared token consumption (no auth required)
+|--------------------------------------------------------------------------
+*/
+Route::get('shared/{token}', [PublicTokenController::class, 'consume'])
+    ->middleware('throttle:20,1');

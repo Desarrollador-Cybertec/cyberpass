@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api\\\\app\\\\Http\\\\Controllers\" -Name)"
+    ]
+  }
+}
