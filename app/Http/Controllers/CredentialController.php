@@ -63,6 +63,19 @@ class CredentialController extends Controller
         return response()->json(new CredentialResource($credential));
     }
 
+    public function reveal(Request $request, Category $category, Credential $credential): JsonResponse
+    {
+        $this->authorize('view', $credential);
+        abort_if($credential->category_id !== $category->id, 404);
+
+        $this->audit->log($request->user(), 'view', Credential::class, $credential->id);
+
+        return response()->json([
+            'password' => $this->service->decrypt($credential),
+            'notes'    => $this->service->decryptNotes($credential),
+        ]);
+    }
+
     public function destroy(Request $request, Category $category, Credential $credential): JsonResponse
     {
         $this->authorize('delete', $credential);

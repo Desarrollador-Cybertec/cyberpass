@@ -79,6 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     Route::prefix('categories/{category}')->group(function () {
         Route::apiResource('credentials', CredentialController::class);
+        Route::get('credentials/{credential}/reveal', [CredentialController::class, 'reveal']);
     });
 
     /*
