@@ -14,7 +14,7 @@ class CredentialResource extends JsonResource
             'name'       => $this->name,
             'username'   => $this->username,
             'type'       => $this->type,
-            'asset_id'   => $this->asset_id,
+            'category_id' => $this->category_id,
             'password'   => $this->when($this->resource->password_plain !== null, $this->resource->password_plain),
             'notes'      => $this->when($this->resource->notes_plain !== null, $this->resource->notes_plain),
             'created_at' => $this->created_at,

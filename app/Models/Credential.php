@@ -12,7 +12,7 @@ class Credential extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'asset_id',
+        'category_id',
         'organization_id',
         'created_by',
         'name',
@@ -35,9 +35,9 @@ class Credential extends Model
     public ?string $password_plain = null;
     public ?string $notes_plain    = null;
 
-    public function asset(): BelongsTo
+    public function category(): BelongsTo
     {
-        return $this->belongsTo(Asset::class);
+        return $this->belongsTo(Category::class);
     }
 
     public function organization(): BelongsTo

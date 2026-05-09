@@ -11,7 +11,7 @@ class CreateCredentialRequest extends FormRequest
     {
         return $this->user()->can('create', [
             \App\Models\Credential::class,
-            $this->route('asset'),
+            $this->route('category'),
         ]);
     }
 

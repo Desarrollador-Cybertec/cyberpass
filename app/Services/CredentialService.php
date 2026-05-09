@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Asset;
+use App\Models\Category;
 use App\Models\Credential;
 use App\Models\Organization;
 use App\Models\User;
@@ -11,7 +11,7 @@ class CredentialService
 {
     public function __construct(private EncryptionService $encryption) {}
 
-    public function create(Asset $asset, Organization $organization, User $creator, array $data): Credential
+    public function create(Category $category, Organization $organization, User $creator, array $data): Credential
     {
         ['ciphertext' => $encPwd, 'iv' => $iv] = $this->encryption->encrypt($data['password']);
 
@@ -23,7 +23,7 @@ class CredentialService
         }
 
         return Credential::create([
-            'asset_id'           => $asset->id,
+            'category_id'        => $category->id,
             'organization_id'    => $organization->id,
             'created_by'         => $creator->id,
             'name'               => $data['name'],
@@ -38,7 +38,6 @@ class CredentialService
 
     public function update(Credential $credential, array $data): Credential
     {
-        // Snapshot de la versión actual antes de modificar
         $credential->versions()->create([
             'changed_by'         => $credential->created_by,
             'username'           => $credential->username,

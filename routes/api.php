@@ -3,14 +3,12 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\TwoFactorController;
-use App\Http\Controllers\AssetController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CredentialController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationDivisionController;
 use App\Http\Controllers\OrganizationDomainController;
 use App\Http\Controllers\OrganizationUserController;
-use App\Http\Controllers\SubcategoryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -73,18 +71,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Asset Hierarchy
+    | Credentials (scoped to category)
     |--------------------------------------------------------------------------
     */
     Route::prefix('categories/{category}')->group(function () {
-        Route::apiResource('subcategories', SubcategoryController::class);
-    });
-
-    Route::prefix('subcategories/{subcategory}')->group(function () {
-        Route::apiResource('assets', AssetController::class);
-    });
-
-    Route::prefix('assets/{asset}')->group(function () {
         Route::apiResource('credentials', CredentialController::class);
     });
 });

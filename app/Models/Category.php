@@ -28,8 +28,8 @@ class Category extends Model
         return $this->belongsTo(Division::class);
     }
 
-    public function subcategories(): HasMany
+    public function credentials(): HasMany
     {
-        return $this->hasMany(Subcategory::class);
+        return $this->hasMany(Credential::class);
     }
 }

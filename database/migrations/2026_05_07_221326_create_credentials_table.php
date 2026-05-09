@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('credentials', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('asset_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('category_id')->constrained()->cascadeOnDelete();
             $table->foreignId('organization_id')->constrained()->cascadeOnDelete();
             $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
             $table->string('name');

@@ -2,15 +2,15 @@
 
 namespace App\Policies;
 
+use App\Models\Category;
 use App\Models\Credential;
-use App\Models\Asset;
 use App\Models\User;
 
 class CredentialPolicy
 {
-    public function viewAny(User $user, Asset $asset): bool
+    public function viewAny(User $user, Category $category): bool
     {
-        return $user->isSysAdmin() || $user->organization_id === $asset->organization_id;
+        return $user->isSysAdmin() || $user->organization_id === $category->organization_id;
     }
 
     public function view(User $user, Credential $credential): bool
@@ -18,9 +18,9 @@ class CredentialPolicy
         return $user->isSysAdmin() || $user->organization_id === $credential->organization_id;
     }
 
-    public function create(User $user, Asset $asset): bool
+    public function create(User $user, Category $category): bool
     {
-        return $user->isSysAdmin() || $user->organization_id === $asset->organization_id;
+        return $user->isSysAdmin() || $user->organization_id === $category->organization_id;
     }
 
     public function update(User $user, Credential $credential): bool
