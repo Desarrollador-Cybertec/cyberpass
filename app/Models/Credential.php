@@ -31,6 +31,10 @@ class Credential extends Model
         'iv_notes',
     ];
 
+    // Populated by CredentialService::decrypt() before passing to the resource
+    public ?string $password_plain = null;
+    public ?string $notes_plain    = null;
+
     public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);
