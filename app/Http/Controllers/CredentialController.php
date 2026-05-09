@@ -44,9 +44,6 @@ class CredentialController extends Controller
         $this->authorize('view', $credential);
         abort_if($credential->category_id !== $category->id, 404);
 
-        $credential->password_plain = $this->service->decrypt($credential);
-        $credential->notes_plain    = $this->service->decryptNotes($credential);
-
         $this->audit->log($request->user(), 'view', Credential::class, $credential->id);
 
         return response()->json(new CredentialResource($credential));
@@ -68,7 +65,7 @@ class CredentialController extends Controller
         $this->authorize('view', $credential);
         abort_if($credential->category_id !== $category->id, 404);
 
-        $this->audit->log($request->user(), 'view', Credential::class, $credential->id);
+        $this->audit->log($request->user(), 'reveal_password', Credential::class, $credential->id);
 
         return response()->json([
             'password' => $this->service->decrypt($credential),
