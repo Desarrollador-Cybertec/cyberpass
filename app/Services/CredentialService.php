@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Category;
 use App\Models\Credential;
+use App\Models\CredentialVersion;
 use App\Models\Organization;
 use App\Models\User;
 
@@ -91,5 +92,29 @@ class CredentialService
         }
 
         return $this->encryption->decrypt($credential->notes_encrypted, $credential->iv_notes);
+    }
+
+    public function decryptVersion(CredentialVersion $version): string
+    {
+        return $this->encryption->decrypt($version->encrypted_password, $version->iv);
+    }
+
+    public function restoreVersion(Credential $credential, CredentialVersion $version): Credential
+    {
+        // Snapshot current state before overwriting
+        $credential->versions()->create([
+            'changed_by'         => $credential->created_by,
+            'username'           => $credential->username,
+            'encrypted_password' => $credential->encrypted_password,
+            'iv'                 => $credential->iv,
+        ]);
+
+        $credential->update([
+            'username'           => $version->username,
+            'encrypted_password' => $version->encrypted_password,
+            'iv'                 => $version->iv,
+        ]);
+
+        return $credential->fresh();
     }
 }

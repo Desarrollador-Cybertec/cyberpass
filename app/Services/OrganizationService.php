@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use App\Mail\OrganizationInvitationMail;
 use App\Models\Division;
 use App\Models\Organization;
 use App\Models\OrganizationDomain;
 use App\Models\User;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class OrganizationService
@@ -49,15 +53,30 @@ class OrganizationService
 
     public function inviteUser(Organization $organization, array $data): User
     {
-        return User::create([
+        $user = User::create([
             'organization_id' => $organization->id,
             'name'            => $data['name'],
             'email'           => $data['email'],
-            'password'        => Hash::make(Str::random(16)),
+            'password'        => Hash::make(Str::random(32)),
             'role'            => $data['role'],
             'account_type'    => 'enterprise',
-            'is_active'       => true,
+            'is_active'       => false,
         ]);
+
+        $token = Str::random(64);
+
+        DB::table('password_reset_tokens')->upsert(
+            [
+                'email'      => $user->email,
+                'token'      => Hash::make($token),
+                'created_at' => Carbon::now(),
+            ],
+            ['email']
+        );
+
+        Mail::to($user->email)->send(new OrganizationInvitationMail($user, $organization, $token));
+
+        return $user;
     }
 
     public function updateUser(User $user, array $data): User

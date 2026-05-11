@@ -2,14 +2,18 @@
 
 namespace App\Providers;
 
+use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Credential;
+use App\Models\CredentialVersion;
 use App\Models\Image;
 use App\Models\Organization;
 use App\Models\SharedAccessToken;
 use App\Models\User;
+use App\Policies\AuditLogPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\CredentialPolicy;
+use App\Policies\CredentialVersionPolicy;
 use App\Policies\ImagePolicy;
 use App\Policies\OrganizationPolicy;
 use App\Policies\SharedAccessTokenPolicy;
@@ -36,6 +40,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Category::class, CategoryPolicy::class);
         Gate::policy(Credential::class, CredentialPolicy::class);
+        Gate::policy(CredentialVersion::class, CredentialVersionPolicy::class);
+        Gate::policy(AuditLog::class, AuditLogPolicy::class);
         Gate::policy(Image::class, ImagePolicy::class);
         Gate::policy(SharedAccessToken::class, SharedAccessTokenPolicy::class);
     }

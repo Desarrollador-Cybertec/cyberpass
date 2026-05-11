@@ -2,9 +2,14 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\TwoFactorController;
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CredentialController;
+use App\Http\Controllers\CredentialSearchController;
+use App\Http\Controllers\CredentialVersionController;
+use App\Http\Controllers\DomainVerificationController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationDivisionController;
@@ -24,6 +29,7 @@ Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:10,1');
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:6,1');
     Route::post('login/2fa', [AuthController::class, 'verify2fa'])->middleware('throttle:3,1');
+    Route::post('invitations/accept', [InvitationController::class, 'accept'])->middleware('throttle:10,1');
 
     Route::get('google/redirect', [GoogleAuthController::class, 'redirect']);
     Route::get('google/callback', [GoogleAuthController::class, 'callback']);
@@ -64,13 +70,22 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::apiResource('domains', OrganizationDomainController::class)
             ->only(['index', 'store', 'destroy']);
 
+        Route::post('domains/{domain}/verify/initiate', [DomainVerificationController::class, 'initiate']);
+        Route::post('domains/{domain}/verify/confirm', [DomainVerificationController::class, 'confirm']);
+
         Route::apiResource('users', OrganizationUserController::class)
             ->only(['index', 'store', 'update', 'destroy']);
 
         Route::apiResource('divisions', OrganizationDivisionController::class);
 
         Route::apiResource('categories', CategoryController::class);
+
+        Route::get('audit-logs', [AuditLogController::class, 'forOrganization']);
+
+        Route::get('credentials', [CredentialSearchController::class, 'index']);
     });
+
+    Route::get('audit-logs', [AuditLogController::class, 'index']);
 
     /*
     |--------------------------------------------------------------------------
@@ -80,6 +95,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('categories/{category}')->group(function () {
         Route::apiResource('credentials', CredentialController::class);
         Route::get('credentials/{credential}/reveal', [CredentialController::class, 'reveal']);
+
+        Route::prefix('credentials/{credential}/versions')->group(function () {
+            Route::get('/', [CredentialVersionController::class, 'index']);
+            Route::get('{version}/reveal', [CredentialVersionController::class, 'reveal']);
+            Route::post('{version}/restore', [CredentialVersionController::class, 'restore']);
+        });
     });
 
     /*

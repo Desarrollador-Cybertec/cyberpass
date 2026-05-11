@@ -19,11 +19,16 @@ class CredentialController extends Controller
         private AuditService $audit,
     ) {}
 
-    public function index(Category $category): JsonResponse
+    public function index(Request $request, Category $category): JsonResponse
     {
         $this->authorize('viewAny', [Credential::class, $category]);
 
-        $credentials = $category->credentials()->latest()->paginate(20);
+        $credentials = $category->credentials()
+            ->when($request->query('q'), fn ($q, $s) => $q->where('name', 'ILIKE', "%{$s}%")
+                ->orWhere('username', 'ILIKE', "%{$s}%"))
+            ->when($request->query('type'), fn ($q, $t) => $q->where('type', $t))
+            ->latest()
+            ->paginate(20);
 
         return response()->json(CredentialResource::collection($credentials)->response()->getData(true));
     }

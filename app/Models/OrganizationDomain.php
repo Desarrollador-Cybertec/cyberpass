@@ -11,12 +11,15 @@ class OrganizationDomain extends Model
         'organization_id',
         'domain',
         'is_verified',
+        'verification_token',
+        'verification_expires_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_verified' => 'boolean',
+            'is_verified'             => 'boolean',
+            'verification_expires_at' => 'datetime',
         ];
     }
 
