@@ -9,9 +9,12 @@ class SharedAccessTokenResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $frontendUrl = rtrim(config('app.frontend_url', config('app.url')), '/');
+
         return [
             'id'           => $this->id,
             'token'        => $this->token,
+            'share_url'    => "{$frontendUrl}/shared/{$this->token}",
             'requires_pin' => $this->requiresPin(),
             'expires_at'   => $this->expires_at,
             'max_uses'     => $this->max_uses,

@@ -91,6 +91,7 @@ Credential
 |-------|------|-------------|
 | `id` | integer | ID del token |
 | `token` | string | Cadena aleatoria de 64 caracteres |
+| `share_url` | string | Link completo listo para compartir (`{FRONTEND_URL}/shared/{token}`) |
 | `requires_pin` | boolean | Si el token exige PIN para ser reclamado |
 | `expires_at` | datetime\|null | Fecha de expiración |
 | `max_uses` | integer\|null | Máximo número de usos permitidos |
@@ -100,7 +101,8 @@ Credential
 | `created_by` | integer | ID del usuario que generó el token |
 | `created_at` | datetime | Fecha de creación |
 
-> `pin_hash` nunca se incluye en ninguna respuesta.
+> `pin_hash` nunca se incluye en ninguna respuesta.  
+> `share_url` se construye con la variable de entorno `FRONTEND_URL`. Si no está definida, se usa `APP_URL`.
 
 ---
 
@@ -124,6 +126,7 @@ Credential
         {
             "id": 3,
             "token": "aB3xK...64chars",
+            "share_url": "https://app.cyberpass.com/shared/aB3xK...64chars",
             "requires_pin": true,
             "expires_at": "2026-05-16T14:00:00.000000Z",
             "max_uses": 5,
@@ -176,6 +179,7 @@ Credential
 {
     "id": 4,
     "token": "aB3xKz9mQwErTyUiOpAsDF...64chars",
+    "share_url": "https://app.cyberpass.com/shared/aB3xKz9mQwErTyUiOpAsDF...64chars",
     "requires_pin": true,
     "expires_at": "2026-05-20T23:59:59.000000Z",
     "max_uses": 3,
@@ -187,7 +191,7 @@ Credential
 }
 ```
 
-> El creador debe compartir el PIN por un canal separado. Si lo pierde, deberá revocar el token y generar uno nuevo.
+> El campo `share_url` es el link listo para copiar y enviar. El creador debe compartir el PIN por un canal separado. Si lo pierde, deberá revocar el token y generar uno nuevo.
 
 **Errores**
 

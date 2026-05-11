@@ -17,6 +17,8 @@ return [
 
     'credential_encryption_key' => env('CREDENTIAL_ENCRYPTION_KEY'),
 
+    'frontend_url' => env('FRONTEND_URL', env('APP_URL', 'http://localhost')),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment
