@@ -11,18 +11,28 @@ class SharedAccessToken extends Model
         'credential_id',
         'created_by',
         'token',
+        'pin_hash',
         'expires_at',
         'max_uses',
         'use_count',
         'is_active',
     ];
 
+    protected $hidden = [
+        'pin_hash',
+    ];
+
     protected function casts(): array
     {
         return [
             'expires_at' => 'datetime',
-            'is_active' => 'boolean',
+            'is_active'  => 'boolean',
         ];
+    }
+
+    public function requiresPin(): bool
+    {
+        return $this->pin_hash !== null;
     }
 
     public function credential(): BelongsTo

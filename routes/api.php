@@ -127,5 +127,8 @@ Route::middleware('auth:sanctum')->group(function () {
 | Public — Shared token consumption (no auth required)
 |--------------------------------------------------------------------------
 */
-Route::get('shared/{token}', [PublicTokenController::class, 'consume'])
+Route::get('shared/{token}', [PublicTokenController::class, 'info'])
     ->middleware('throttle:20,1');
+
+Route::post('shared/{token}/claim', [PublicTokenController::class, 'claim'])
+    ->middleware('throttle:10,1');

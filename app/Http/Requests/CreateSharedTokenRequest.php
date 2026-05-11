@@ -19,6 +19,7 @@ class CreateSharedTokenRequest extends FormRequest
         return [
             'expires_at' => ['sometimes', 'nullable', 'date', 'after:now'],
             'max_uses'   => ['sometimes', 'nullable', 'integer', 'min:1', 'max:1000'],
+            'pin'        => ['sometimes', 'nullable', 'string', 'min:4', 'max:16'],
         ];
     }
 }

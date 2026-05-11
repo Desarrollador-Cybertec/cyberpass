@@ -2,18 +2,20 @@
 
 **Recurso:** `SharedAccessToken`  
 **Tabla:** `shared_access_tokens`  
-**Fecha:** 2026-05-09
+**Fecha:** 2026-05-11 (revisado — flujo con PIN y link público)
 
 ---
 
 ## Propósito
 
-Permite compartir una credencial de forma segura y controlada sin exponer el vault completo. Se genera un token único de 64 caracteres que un tercero puede consumir desde un endpoint público (sin autenticación) para obtener el usuario y contraseña desencriptados.
+Permite compartir una credencial de forma segura y controlada sin exponer el vault completo. Se genera un token único de 64 caracteres que produce un **link público temporal** apuntando al frontend de la app.
 
-El token es efímero: admite expiración por fecha y/o límite de usos. Al agotarse cualquiera de estas condiciones, el token deja de funcionar.
+El receptor del link ve primero solo el nombre de la credencial. Para obtener los datos de acceso debe ingresar un **PIN** (definido por el creador) si el token lo requiere. El PIN viaja por un canal separado (fuera de banda), de modo que el link solo no es suficiente para acceder.
+
+El token es efímero: admite expiración por fecha y/o límite de usos. Al agotarse cualquiera de estas condiciones, el link deja de funcionar.
 
 ---
-                                   
+
 ## Jerarquía
 
 ```
@@ -23,20 +25,40 @@ Credential
 
 ---
 
-## Roles y permisos
+## Roles y permisos (endpoints autenticados)
 
 | Acción | sysadmin | org_admin | org_user |
 |--------|----------|-----------|----------|
 | Listar tokens de una credencial | ✅ | ✅ (su org) | ✅ (su org) |
 | Generar token | ✅ | ✅ (su org) | ✅ (su org) |
 | Revocar token | ✅ | ✅ (su org) | ✅ (solo el propio) |
-| Consumir token (público) | — | — | — |
 
-> El endpoint de consumo (`GET /api/shared/{token}`) no requiere autenticación.
+> Los endpoints de consulta pública (`GET /api/shared/{token}` y `POST /api/shared/{token}/claim`) no requieren autenticación.
 
 ---
 
-## Contrato común (endpoints protegidos)
+## Flujo completo
+
+```
+1. Miembro de la org → POST /api/credentials/{cred}/tokens
+   → define PIN (opcional), expiración y/o max_uses
+   → obtiene el token de 64 chars
+
+2. Comparte por separado:
+   - Link:  https://app.cyberpass.com/shared/{token}  (frontend)
+   - PIN:   canal seguro aparte (WhatsApp, email cifrado, etc.)
+
+3. Receptor abre el link → frontend llama GET /api/shared/{token}
+   → ve nombre de la credencial y si requiere PIN
+
+4. Receptor ingresa el PIN → frontend llama POST /api/shared/{token}/claim { pin }
+   → obtiene usuario y contraseña desencriptados
+   → el uso se incrementa en 1
+```
+
+---
+
+## Contrato común (endpoints autenticados)
 
 - Requieren **Bearer token** vía `auth:sanctum`.
 - Listados paginados a **50 por página**, orden descendente por `created_at`.
@@ -48,16 +70,17 @@ Credential
 |--------|--------|
 | `200` | Listado, revocación exitosa |
 | `201` | Token generado |
-| `401` | Token ausente, inválido o expirado |
+| `401` | Sanctum token ausente o inválido |
 | `403` | Sin permiso |
 | `404` | Credencial o token no encontrado |
 | `422` | Validación fallida |
 
-### Códigos de estado (endpoint público)
+### Códigos de estado (endpoints públicos)
 
 | Código | Cuándo |
 |--------|--------|
-| `200` | Token válido, credencial devuelta |
+| `200` | Token válido |
+| `403` | PIN incorrecto |
 | `404` | Token inexistente, revocado, expirado o sin usos |
 
 ---
@@ -68,13 +91,16 @@ Credential
 |-------|------|-------------|
 | `id` | integer | ID del token |
 | `token` | string | Cadena aleatoria de 64 caracteres |
+| `requires_pin` | boolean | Si el token exige PIN para ser reclamado |
 | `expires_at` | datetime\|null | Fecha de expiración |
 | `max_uses` | integer\|null | Máximo número de usos permitidos |
-| `use_count` | integer | Número de veces consumido |
-| `is_active` | boolean | Si fue revocado manualmente |
+| `use_count` | integer | Número de veces reclamado exitosamente |
+| `is_active` | boolean | `false` si fue revocado manualmente |
 | `is_valid` | boolean | `true` si activo + no expirado + no agotado |
 | `created_by` | integer | ID del usuario que generó el token |
 | `created_at` | datetime | Fecha de creación |
+
+> `pin_hash` nunca se incluye en ninguna respuesta.
 
 ---
 
@@ -90,13 +116,6 @@ Credential
 |-------|------|-------------|
 | `page` | integer | Página de resultados |
 
-**Ejemplo de request**
-
-```
-GET /api/credentials/12/tokens?page=1
-Authorization: Bearer {token}
-```
-
 **Respuesta `200`**
 
 ```json
@@ -105,6 +124,7 @@ Authorization: Bearer {token}
         {
             "id": 3,
             "token": "aB3xK...64chars",
+            "requires_pin": true,
             "expires_at": "2026-05-16T14:00:00.000000Z",
             "max_uses": 5,
             "use_count": 2,
@@ -129,20 +149,23 @@ Authorization: Bearer {token}
 
 | Campo | Tipo | Reglas |
 |-------|------|--------|
-| `expires_at` | datetime | Fecha futura válida |
-| `max_uses` | integer | `min:1`, `max:1000` |
+| `pin` | string | Mínimo 4, máximo 16 caracteres. Si se omite, el link es accesible sin PIN. |
+| `expires_at` | datetime | Fecha futura válida. |
+| `max_uses` | integer | `min:1`, `max:1000`. |
 
 **Reglas de negocio**
 
+- Si `pin` se provee, se almacena hasheado (bcrypt). El PIN en texto plano **nunca se guarda ni se devuelve**.
 - Si `expires_at` y `max_uses` se omiten, el token no expira y no tiene límite de usos.
-- El token se genera automáticamente como cadena aleatoria de 64 caracteres.
-- El campo `is_active` arranca en `true`; solo se desactiva por revocación explícita.
+- El token (64 chars) se genera automáticamente; es el identificador del link público.
+- `is_active` arranca en `true`; solo se desactiva por revocación explícita.
 
 **Ejemplo de request**
 
 ```json
 {
-    "expires_at": "2026-05-16T23:59:59",
+    "pin": "7294",
+    "expires_at": "2026-05-20T23:59:59",
     "max_uses": 3
 }
 ```
@@ -153,20 +176,23 @@ Authorization: Bearer {token}
 {
     "id": 4,
     "token": "aB3xKz9mQwErTyUiOpAsDF...64chars",
-    "expires_at": "2026-05-16T23:59:59.000000Z",
+    "requires_pin": true,
+    "expires_at": "2026-05-20T23:59:59.000000Z",
     "max_uses": 3,
     "use_count": 0,
     "is_active": true,
     "is_valid": true,
     "created_by": 7,
-    "created_at": "2026-05-09T15:30:00.000000Z"
+    "created_at": "2026-05-11T15:30:00.000000Z"
 }
 ```
+
+> El creador debe compartir el PIN por un canal separado. Si lo pierde, deberá revocar el token y generar uno nuevo.
 
 **Errores**
 
 - `403` — el usuario no pertenece a la org de la credencial.
-- `422` — `expires_at` en el pasado, `max_uses` fuera de rango.
+- `422` — `expires_at` en el pasado, `max_uses` fuera de rango, PIN demasiado corto.
 
 ---
 
@@ -179,8 +205,8 @@ Authorization: Bearer {token}
 **Reglas de negocio**
 
 - Cambia `is_active` a `false`.
-- El token revocado devuelve `404` en el endpoint público.
-- La revocación es irreversible desde la API (no hay endpoint para reactivar).
+- El link revocado devuelve `404` en los endpoints públicos.
+- La revocación es irreversible desde la API.
 
 **Respuesta `200`**
 
@@ -192,32 +218,70 @@ Authorization: Bearer {token}
 
 **Errores**
 
-- `403` — sin permiso para revocar (ej. org_user intentando revocar token ajeno).
+- `403` — sin permiso para revocar.
 - `404` — token no pertenece a la credencial indicada.
 
 ---
 
-## Endpoint público
+## Endpoints públicos
 
 ### `GET /api/shared/{token}`
 
 **Sin autenticación.** Throttle: 20 requests/minuto.
 
-**Path params**
-
-| Param | Descripción |
-|-------|-------------|
-| `token` | Cadena de 64 caracteres generada al crear el token |
+**Propósito:** permite al frontend mostrar la página del link antes de pedir el PIN. No revela datos de acceso ni consume un uso.
 
 **Reglas de negocio**
 
-1. Si el token no existe → `404`.
-2. Si `is_active = false` (revocado) → `404`.
-3. Si `expires_at` es pasado → `404`.
-4. Si `use_count >= max_uses` (cuando `max_uses` no es null) → `404`.
-5. Si es válido → incrementa `use_count` en 1 y devuelve la credencial desencriptada.
+1. Si el token no existe o no es válido (revocado, expirado, agotado) → `404`.
+2. Si es válido → devuelve metadata de la credencial e indica si requiere PIN.
 
-> El servidor **siempre** responde `404` para tokens inválidos, independientemente del motivo. Esto evita filtrar información sobre el estado del token.
+**Respuesta `200`**
+
+```json
+{
+    "credential": {
+        "name": "Router Principal",
+        "type": "password"
+    },
+    "requires_pin": true,
+    "expires_at": "2026-05-20T23:59:59.000000Z",
+    "is_valid": true
+}
+```
+
+**Errores**
+
+- `404` — token inválido, expirado, revocado o agotado.
+
+---
+
+### `POST /api/shared/{token}/claim`
+
+**Sin autenticación.** Throttle: 10 requests/minuto.
+
+**Propósito:** reclama el link. Valida el PIN (si aplica), devuelve los datos de acceso desencriptados e incrementa el contador de usos.
+
+**Body**
+
+| Campo | Tipo | Reglas |
+|-------|------|--------|
+| `pin` | string | Requerido si el token tiene PIN. Ignorado si no lo tiene. |
+
+**Reglas de negocio**
+
+1. Si el token no existe o no es válido → `404` (igual que `info`, por seguridad).
+2. Si el token requiere PIN y no se envía `pin` o no coincide → `403`.
+3. Si el PIN es correcto (o no se requiere) → devuelve credencial desencriptada e incrementa `use_count`.
+4. Si después de incrementar `use_count >= max_uses`, el siguiente intento devolverá `404`.
+
+**Ejemplo de request (con PIN)**
+
+```json
+{
+    "pin": "7294"
+}
+```
 
 **Respuesta `200`**
 
@@ -232,9 +296,9 @@ Authorization: Bearer {token}
     "password": "s3cr3t_pl4in_t3xt",
     "notes": "Cambiar contraseña antes del 2026-06-01",
     "token": {
-        "expires_at": "2026-05-16T23:59:59.000000Z",
-        "use_count": 3,
-        "max_uses": 5
+        "expires_at": "2026-05-20T23:59:59.000000Z",
+        "use_count": 1,
+        "max_uses": 3
     }
 }
 ```
@@ -243,6 +307,7 @@ Authorization: Bearer {token}
 
 **Errores**
 
+- `403` — PIN incorrecto.
 - `404` — token inválido, expirado, revocado o agotado.
 
 ---
@@ -252,12 +317,14 @@ Authorization: Bearer {token}
 ```
 Generado (is_active=true, use_count=0)
     │
-    ├─► Consumido N veces → use_count++
-    │       └─► use_count >= max_uses → inválido (404 en consumo)
+    ├─► GET /shared/{token} → muestra metadata (no consume uso)
     │
-    ├─► expires_at llega → inválido (404 en consumo)
+    ├─► POST /shared/{token}/claim → valida PIN → use_count++
+    │       └─► use_count >= max_uses → próximo claim devuelve 404
     │
-    └─► PATCH /revoke → is_active=false → inválido (404 en consumo)
+    ├─► expires_at llega → 404 en info y claim
+    │
+    └─► PATCH /revoke → is_active=false → 404 en info y claim
 ```
 
 ---
@@ -266,12 +333,13 @@ Generado (is_active=true, use_count=0)
 
 | Archivo | Rol |
 |---------|-----|
-| `database/migrations/2026_05_07_221328_create_shared_access_tokens_table.php` | Tabla con FK a credentials y users |
-| `app/Models/SharedAccessToken.php` | Modelo con `isValid()` |
+| `database/migrations/2026_05_07_221328_create_shared_access_tokens_table.php` | Tabla base con FK a credentials y users |
+| `database/migrations/2026_05_11_210016_add_pin_hash_to_shared_access_tokens_table.php` | Agrega columna `pin_hash` |
+| `app/Models/SharedAccessToken.php` | Modelo con `isValid()`, `requiresPin()` |
 | `app/Models/Credential.php` | Relación `hasMany(SharedAccessToken::class)` |
 | `app/Policies/SharedAccessTokenPolicy.php` | `viewAny`, `create`, `revoke` |
-| `app/Http/Requests/CreateSharedTokenRequest.php` | Validación de generación |
-| `app/Http/Resources/SharedAccessTokenResource.php` | Formato de salida |
-| `app/Services/SharedAccessTokenService.php` | `create`, `revoke`, `consume` |
+| `app/Http/Requests/CreateSharedTokenRequest.php` | Validación de generación (incluye `pin`) |
+| `app/Http/Resources/SharedAccessTokenResource.php` | Formato de salida (sin `pin_hash`) |
+| `app/Services/SharedAccessTokenService.php` | `create()`, `revoke()`, `info()`, `claim()` |
 | `app/Http/Controllers/SharedAccessTokenController.php` | CRUD protegido (index, store, revoke) |
-| `app/Http/Controllers/PublicTokenController.php` | Consumo público sin auth |
+| `app/Http/Controllers/PublicTokenController.php` | `info()` (GET público) y `claim()` (POST público) |
