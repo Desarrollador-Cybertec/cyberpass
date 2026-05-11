@@ -15,17 +15,18 @@ class AuditService
         string $action,
         ?string $entityType = null,
         ?int $entityId = null,
-        array $metadata = []
+        array $metadata = [],
+        ?int $organizationId = null,
     ): AuditLog {
         return AuditLog::create([
-            'user_id' => $user?->id,
-            'organization_id' => $user?->organization_id,
-            'action' => $action,
-            'entity_type' => $entityType,
-            'entity_id' => $entityId,
-            'ip_address' => $this->request->ip(),
-            'user_agent' => $this->request->userAgent(),
-            'metadata' => $metadata ?: null,
+            'user_id'         => $user?->id,
+            'organization_id' => $organizationId ?? $user?->organization_id,
+            'action'          => $action,
+            'entity_type'     => $entityType,
+            'entity_id'       => $entityId,
+            'ip_address'      => $this->request->ip(),
+            'user_agent'      => $this->request->userAgent(),
+            'metadata'        => $metadata ?: null,
         ]);
     }
 }

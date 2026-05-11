@@ -14,6 +14,7 @@
 | 3 | Búsqueda y filtrado de credenciales | 1 nuevo + 1 mejorado |
 | 4 | Verificación DNS de dominios | 2 |
 | 5 | Flujo de invitación con email y token | 1 público |
+| 6 | Trazabilidad de links compartidos | 0 nuevos (mejora a endpoints existentes) |
 
 ---
 
@@ -525,6 +526,77 @@ El contrato de entrada no cambia. El cambio es de comportamiento:
 
 ---
 
+## 6. Trazabilidad de links compartidos
+
+### Propósito
+
+Los links públicos de acceso a credenciales (`/api/shared/{token}`) deben dejar rastro en `audit_logs` para que el org_admin pueda saber quién reclamó un link, desde qué IP, cuándo, y si hubo intentos fallidos de PIN. Esta trazabilidad es visible a través de los endpoints de Audit Logs del Entregable 2.
+
+### Acciones registradas
+
+| Acción en `audit_logs` | Cuándo se genera | `user_id` | `organization_id` |
+|------------------------|-----------------|-----------|-------------------|
+| `claim` | El link fue reclamado exitosamente (PIN correcto o sin PIN) | `null` (público) | org de la credencial |
+| `claim_failed` | Se intentó reclamar con PIN incorrecto | `null` (público) | org de la credencial |
+
+> Como estos endpoints son públicos, `user_id` siempre es `null`. La IP del solicitante queda registrada en `audit_logs.ip_address`.
+
+### Metadata de los registros
+
+**Para `claim`:**
+
+```json
+{
+    "entity_type": "App\\Models\\SharedAccessToken",
+    "entity_id": 4,
+    "metadata": {
+        "credential_id": 12
+    },
+    "ip_address": "203.0.113.45"
+}
+```
+
+**Para `claim_failed`:**
+
+```json
+{
+    "entity_type": "App\\Models\\SharedAccessToken",
+    "entity_id": 4,
+    "metadata": {
+        "reason": "invalid_pin",
+        "credential_id": 12
+    },
+    "ip_address": "203.0.113.45"
+}
+```
+
+### Cómo verlo como org_admin
+
+```
+GET /api/organizations/{org}/audit-logs?entity_type=App\Models\SharedAccessToken
+GET /api/organizations/{org}/audit-logs?action=claim
+GET /api/organizations/{org}/audit-logs?action=claim_failed
+```
+
+### Cambios en `AuditService`
+
+Se añadió el parámetro opcional `$organizationId` a `AuditService::log()` para poder asociar logs de endpoints públicos (sin usuario autenticado) a la organización correcta:
+
+```php
+public function log(
+    ?User $user,
+    string $action,
+    ?string $entityType = null,
+    ?int $entityId = null,
+    array $metadata = [],
+    ?int $organizationId = null,  // nuevo
+): AuditLog
+```
+
+Cuando se provee `$organizationId`, tiene precedencia sobre `$user->organization_id`.
+
+---
+
 ## Resumen de nuevos endpoints
 
 | Método | Ruta | Auth | Rol mínimo |
@@ -538,6 +610,21 @@ El contrato de entrada no cambia. El cambio es de comportamiento:
 | `POST` | `/api/organizations/{org}/domains/{domain}/verify/initiate` | ✅ | org_admin |
 | `POST` | `/api/organizations/{org}/domains/{domain}/verify/confirm` | ✅ | org_admin |
 | `POST` | `/api/auth/invitations/accept` | ❌ | — |
+| `GET` | `/api/shared/{token}` | ❌ | — (mejorado: no consume uso) |
+| `POST` | `/api/shared/{token}/claim` | ❌ | — (nuevo: valida PIN + trazable) |
+
+---
+
+## Acciones registradas en `audit_logs` — Fase 4 completa
+
+| Acción | Quién la genera | Entidad |
+|--------|----------------|---------|
+| `reveal_password` | CredentialVersionController (reveal de versión) | `CredentialVersion` |
+| `update` + `restored_version_id` | CredentialVersionController (restore) | `Credential` |
+| `update` + `domain_verified` | DomainVerificationController (confirm) | `OrganizationDomain` |
+| `invite_accepted` | InvitationController (accept) | `User` |
+| `claim` | PublicTokenController (claim exitoso) | `SharedAccessToken` |
+| `claim_failed` | PublicTokenController (PIN incorrecto) | `SharedAccessToken` |
 
 ---
 
@@ -562,3 +649,9 @@ El contrato de entrada no cambia. El cambio es de comportamiento:
 | `app/Mail/OrganizationInvitationMail.php` | Mailable de invitación |
 | `resources/views/emails/invitation.blade.php` | Template HTML del email |
 | `app/Services/OrganizationService.php` | `inviteUser()` actualizado — is_active=false + mail |
+| `app/Http/Controllers/PublicTokenController.php` | `info()` (metadata) y `claim()` (con PIN + audit) |
+| `app/Services/SharedAccessTokenService.php` | `info()`, `claim()` — reemplaza `consume()` |
+| `app/Services/AuditService.php` | Nuevo param `$organizationId` para logs de endpoints públicos |
+| `app/Models/SharedAccessToken.php` | `requiresPin()`, campo `pin_hash` |
+| `app/Http/Resources/SharedAccessTokenResource.php` | Incluye `requires_pin` |
+| `database/migrations/2026_05_11_210016_add_pin_hash_to_shared_access_tokens_table.php` | Agrega `pin_hash` |
