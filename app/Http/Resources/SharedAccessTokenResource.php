@@ -9,7 +9,7 @@ class SharedAccessTokenResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $frontendUrl = rtrim(config('app.frontend_url', config('app.url')), '/');
+        $frontendUrl = rtrim(env('FRONTEND_URL', config('app.url', 'http://localhost')), '/');
 
         return [
             'id'           => $this->id,
