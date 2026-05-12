@@ -5,7 +5,8 @@
       "Read(//c/Users/juanc/Herd/**)",
       "PowerShell(Get-ChildItem -Path 'C:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api' -Directory | Where-Object {$_.Name -notin @\\('.git', 'node_modules', 'vendor'\\)} | Select-Object -ExpandProperty Name | Sort-Object)",
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api\" -Recurse -Name)",
-      "PowerShell(php artisan migrate 2>&1)"
+      "PowerShell(php artisan migrate 2>&1)",
+      "Read(//c/Users/juanc/.claude/projects/c--Users-juanc-Herd-cyberpass-api/memory/**)"
     ]
   }
 }

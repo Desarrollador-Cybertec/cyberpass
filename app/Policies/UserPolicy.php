@@ -8,18 +8,22 @@ class UserPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isSysAdmin() || $user->role === 'org_admin';
+        return $user->isSysAdmin() || $user->isOrgAdmin();
     }
 
     public function view(User $user, User $target): bool
     {
+        if ($user->isPersonalUser()) {
+            return false;
+        }
+
         return $user->isSysAdmin()
-            || ($user->role === 'org_admin' && $user->organization_id === $target->organization_id);
+            || ($user->isOrgAdmin() && $user->organization_id === $target->organization_id);
     }
 
     public function create(User $user): bool
     {
-        return $user->isSysAdmin() || $user->role === 'org_admin';
+        return $user->isSysAdmin() || $user->isOrgAdmin();
     }
 
     public function update(User $user, User $target): bool
@@ -28,7 +32,7 @@ class UserPolicy
             return true;
         }
 
-        return $user->role === 'org_admin'
+        return $user->isOrgAdmin()
             && $user->organization_id === $target->organization_id
             && ! $target->isSysAdmin();
     }
@@ -40,6 +44,6 @@ class UserPolicy
         }
 
         return $user->isSysAdmin()
-            || ($user->role === 'org_admin' && $user->organization_id === $target->organization_id);
+            || ($user->isOrgAdmin() && $user->organization_id === $target->organization_id);
     }
 }

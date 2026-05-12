@@ -10,29 +10,41 @@ class CredentialPolicy
 {
     public function viewAny(User $user, Category $category): bool
     {
+        if ($user->isPersonalUser()) {
+            return false;
+        }
+
         return $user->isSysAdmin() || $user->organization_id === $category->organization_id;
     }
 
     public function view(User $user, Credential $credential): bool
     {
+        if ($user->isPersonalUser()) {
+            return false;
+        }
+
         return $user->isSysAdmin() || $user->organization_id === $credential->organization_id;
     }
 
     public function create(User $user, Category $category): bool
     {
+        if ($user->isPersonalUser()) {
+            return false;
+        }
+
         return $user->isSysAdmin() || $user->organization_id === $category->organization_id;
     }
 
     public function update(User $user, Credential $credential): bool
     {
         return $user->isSysAdmin()
-            || ($user->role === 'org_admin' && $user->organization_id === $credential->organization_id)
-            || ($user->role === 'org_user' && $user->id === $credential->created_by);
+            || ($user->isOrgAdmin() && $user->organization_id === $credential->organization_id)
+            || ($user->isOrgUser() && $user->id === $credential->created_by);
     }
 
     public function delete(User $user, Credential $credential): bool
     {
         return $user->isSysAdmin()
-            || ($user->role === 'org_admin' && $user->organization_id === $credential->organization_id);
+            || ($user->isOrgAdmin() && $user->organization_id === $credential->organization_id);
     }
 }

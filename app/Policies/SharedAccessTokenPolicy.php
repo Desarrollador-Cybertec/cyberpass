@@ -10,7 +10,11 @@ class SharedAccessTokenPolicy
 {
     public function viewAny(User $user, Credential $credential): bool
     {
-        if ($user->role === 'sysadmin') {
+        if ($user->isPersonalUser()) {
+            return false;
+        }
+
+        if ($user->isSysAdmin()) {
             return true;
         }
 
@@ -19,7 +23,11 @@ class SharedAccessTokenPolicy
 
     public function create(User $user, Credential $credential): bool
     {
-        if ($user->role === 'sysadmin') {
+        if ($user->isPersonalUser()) {
+            return false;
+        }
+
+        if ($user->isSysAdmin()) {
             return true;
         }
 
@@ -27,12 +35,16 @@ class SharedAccessTokenPolicy
             return false;
         }
 
-        return in_array($user->role, ['org_admin', 'org_user']);
+        return $user->isOrgAdmin() || $user->isOrgUser();
     }
 
     public function revoke(User $user, SharedAccessToken $token): bool
     {
-        if ($user->role === 'sysadmin') {
+        if ($user->isPersonalUser()) {
+            return false;
+        }
+
+        if ($user->isSysAdmin()) {
             return true;
         }
 
@@ -42,7 +54,7 @@ class SharedAccessTokenPolicy
             return false;
         }
 
-        if ($user->role === 'org_admin') {
+        if ($user->isOrgAdmin()) {
             return true;
         }
 

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Helpers\OrganizationResolver;
+use App\Helpers\PublicEmailDetector;
 use App\Helpers\TwoFactorPendingStore;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -15,16 +16,21 @@ class AuthService
     public function __construct(private Google2FA $google2fa) {}
     public function register(array $data): array
     {
+        $email        = $data['email'];
+        $isCorporate  = PublicEmailDetector::isCorporate($email);
+        $organization = $isCorporate ? OrganizationResolver::fromEmail($email) : null;
+
         $user = User::create([
-            'name'         => $data['name'],
-            'email'        => $data['email'],
-            'password'     => Hash::make($data['password']),
-            'account_type' => 'personal',
-            'role'         => 'org_user',
+            'name'            => $data['name'],
+            'email'           => $email,
+            'password'        => Hash::make($data['password']),
+            'account_type'    => $organization ? 'enterprise' : ($isCorporate ? 'enterprise' : 'personal'),
+            'role'            => $isCorporate ? 'org_user' : 'user',
+            'organization_id' => $organization?->id,
         ]);
 
         return [
-            'user'  => $user,
+            'user'  => $user->load('organization'),
             'token' => $user->createToken('api')->plainTextToken,
         ];
     }
@@ -91,16 +97,18 @@ class AuthService
 
     public function findOrCreateFromGoogle(SocialiteUser $googleUser): array
     {
-        $organization = OrganizationResolver::fromEmail($googleUser->getEmail());
+        $email        = $googleUser->getEmail();
+        $isCorporate  = PublicEmailDetector::isCorporate($email);
+        $organization = $isCorporate ? OrganizationResolver::fromEmail($email) : null;
 
         $user = User::updateOrCreate(
             ['google_id' => $googleUser->getId()],
             [
                 'name'            => $googleUser->getName(),
-                'email'           => $googleUser->getEmail(),
+                'email'           => $email,
                 'organization_id' => $organization?->id,
-                'account_type'    => $organization ? 'enterprise' : 'personal',
-                'role'            => 'org_user',
+                'account_type'    => $organization ? 'enterprise' : ($isCorporate ? 'enterprise' : 'personal'),
+                'role'            => $isCorporate ? 'org_user' : 'user',
                 'last_login_at'   => now(),
             ]
         );
@@ -115,6 +123,10 @@ class AuthService
     private function syncEnterpriseOrganization(User $user): void
     {
         if ($user->isSysAdmin() || $user->organization_id) {
+            return;
+        }
+
+        if ($user->isPersonalUser()) {
             return;
         }
 

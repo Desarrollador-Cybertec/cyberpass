@@ -14,6 +14,10 @@ class OrganizationPolicy
 
     public function view(User $user, Organization $organization): bool
     {
+        if ($user->isPersonalUser()) {
+            return false;
+        }
+
         return $user->isSysAdmin()
             || $user->organization_id === $organization->id;
     }
@@ -26,7 +30,7 @@ class OrganizationPolicy
     public function update(User $user, Organization $organization): bool
     {
         return $user->isSysAdmin()
-            || ($user->role === 'org_admin' && $user->organization_id === $organization->id);
+            || ($user->isOrgAdmin() && $user->organization_id === $organization->id);
     }
 
     public function delete(User $user, Organization $organization): bool
@@ -37,18 +41,18 @@ class OrganizationPolicy
     public function manageDomains(User $user, Organization $organization): bool
     {
         return $user->isSysAdmin()
-            || ($user->role === 'org_admin' && $user->organization_id === $organization->id);
+            || ($user->isOrgAdmin() && $user->organization_id === $organization->id);
     }
 
     public function manageUsers(User $user, Organization $organization): bool
     {
         return $user->isSysAdmin()
-            || ($user->role === 'org_admin' && $user->organization_id === $organization->id);
+            || ($user->isOrgAdmin() && $user->organization_id === $organization->id);
     }
 
     public function manageDivisions(User $user, Organization $organization): bool
     {
         return $user->isSysAdmin()
-            || ($user->role === 'org_admin' && $user->organization_id === $organization->id);
+            || ($user->isOrgAdmin() && $user->organization_id === $organization->id);
     }
 }

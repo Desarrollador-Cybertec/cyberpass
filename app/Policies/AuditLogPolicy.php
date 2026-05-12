@@ -10,12 +10,12 @@ class AuditLogPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isSysAdmin() || $user->role === 'org_admin';
+        return $user->isSysAdmin() || $user->isOrgAdmin();
     }
 
     public function viewOrganization(User $user, Organization $organization): bool
     {
         return $user->isSysAdmin()
-            || ($user->role === 'org_admin' && $user->organization_id === $organization->id);
+            || ($user->isOrgAdmin() && $user->organization_id === $organization->id);
     }
 }

@@ -74,6 +74,26 @@ class User extends Authenticatable
         return $this->role === 'sysadmin';
     }
 
+    public function isOrgAdmin(): bool
+    {
+        return $this->role === 'org_admin';
+    }
+
+    public function isOrgUser(): bool
+    {
+        return $this->role === 'org_user';
+    }
+
+    public function isPersonalUser(): bool
+    {
+        return $this->role === 'user';
+    }
+
+    public function belongsToOrg(): bool
+    {
+        return $this->organization_id !== null && ! $this->isSysAdmin();
+    }
+
     public function requires2FA(): bool
     {
         return ! $this->two_factor_enabled;
