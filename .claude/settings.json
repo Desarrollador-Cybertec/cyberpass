@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -1 \"c:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api\\\\\" | grep -E \"^[a-z]\" | head -20)",
+      "Read(//c/Users/juanc/Herd/**)",
+      "PowerShell(Get-ChildItem -Path 'C:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api' -Directory | Where-Object {$_.Name -notin @\\('.git', 'node_modules', 'vendor'\\)} | Select-Object -ExpandProperty Name | Sort-Object)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api\" -Recurse -Name)",
+      "PowerShell(php artisan migrate 2>&1)"
+    ]
+  }
+}

@@ -3,10 +3,15 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\InvitationController;
+use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CredentialController;
+use App\Http\Controllers\CredentialExportController;
+use App\Http\Controllers\VaultCategoryController;
+use App\Http\Controllers\VaultCredentialController;
 use App\Http\Controllers\CredentialSearchController;
 use App\Http\Controllers\CredentialVersionController;
 use App\Http\Controllers\DomainVerificationController;
@@ -30,6 +35,8 @@ Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:6,1');
     Route::post('login/2fa', [AuthController::class, 'verify2fa'])->middleware('throttle:3,1');
     Route::post('invitations/accept', [InvitationController::class, 'accept'])->middleware('throttle:10,1');
+    Route::post('forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
+    Route::post('reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:5,1');
 
     Route::get('google/redirect', [GoogleAuthController::class, 'redirect']);
     Route::get('google/callback', [GoogleAuthController::class, 'callback']);
@@ -51,6 +58,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
+        Route::put('profile', [ProfileController::class, 'update']);
+        Route::post('change-password', [ProfileController::class, 'changePassword']);
 
         Route::prefix('2fa')->group(function () {
             Route::post('setup', [TwoFactorController::class, 'setup']);
@@ -83,6 +92,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('audit-logs', [AuditLogController::class, 'forOrganization']);
 
         Route::get('credentials', [CredentialSearchController::class, 'index']);
+        Route::get('credentials/export', [CredentialExportController::class, 'export'])->middleware('throttle:3,60');
     });
 
     Route::get('audit-logs', [AuditLogController::class, 'index']);
@@ -100,6 +110,28 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('/', [CredentialVersionController::class, 'index']);
             Route::get('{version}/reveal', [CredentialVersionController::class, 'reveal']);
             Route::post('{version}/restore', [CredentialVersionController::class, 'restore']);
+        });
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Personal Vault
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('vault/categories')->group(function () {
+        Route::get('/', [VaultCategoryController::class, 'index']);
+        Route::post('/', [VaultCategoryController::class, 'store']);
+        Route::get('{category}', [VaultCategoryController::class, 'show']);
+        Route::put('{category}', [VaultCategoryController::class, 'update']);
+        Route::delete('{category}', [VaultCategoryController::class, 'destroy']);
+
+        Route::prefix('{category}/credentials')->group(function () {
+            Route::get('/', [VaultCredentialController::class, 'index']);
+            Route::post('/', [VaultCredentialController::class, 'store']);
+            Route::get('{credential}', [VaultCredentialController::class, 'show']);
+            Route::put('{credential}', [VaultCredentialController::class, 'update']);
+            Route::delete('{credential}', [VaultCredentialController::class, 'destroy']);
+            Route::get('{credential}/reveal', [VaultCredentialController::class, 'reveal']);
         });
     });
 

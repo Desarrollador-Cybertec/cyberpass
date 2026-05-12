@@ -38,6 +38,32 @@ class CredentialService
         ]);
     }
 
+    public function createPersonal(Category $category, User $creator, array $data): Credential
+    {
+        ['ciphertext' => $encPwd, 'iv' => $iv] = $this->encryption->encrypt($data['password']);
+
+        $encNotes = null;
+        $ivNotes  = null;
+
+        if (! empty($data['notes'])) {
+            ['ciphertext' => $encNotes, 'iv' => $ivNotes] = $this->encryption->encrypt($data['notes']);
+        }
+
+        return Credential::create([
+            'category_id'        => $category->id,
+            'user_id'            => $creator->id,
+            'created_by'         => $creator->id,
+            'image_id'           => $data['image_id'] ?? null,
+            'name'               => $data['name'],
+            'username'           => $data['username'] ?? null,
+            'encrypted_password' => $encPwd,
+            'iv'                 => $iv,
+            'notes_encrypted'    => $encNotes,
+            'iv_notes'           => $ivNotes,
+            'type'               => $data['type'] ?? 'password',
+        ]);
+    }
+
     public function update(Credential $credential, array $data): Credential
     {
         $credential->versions()->create([

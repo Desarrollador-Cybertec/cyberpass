@@ -14,6 +14,7 @@ class Credential extends Model
     protected $fillable = [
         'category_id',
         'organization_id',
+        'user_id',
         'created_by',
         'image_id',
         'name',
@@ -64,5 +65,10 @@ class Credential extends Model
     public function sharedTokens(): HasMany
     {
         return $this->hasMany(SharedAccessToken::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }
