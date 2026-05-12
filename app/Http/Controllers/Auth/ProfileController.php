@@ -9,10 +9,15 @@ use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+use PragmaRX\Google2FA\Google2FA;
 
 class ProfileController extends Controller
 {
-    public function __construct(private AuditService $audit) {}
+    public function __construct(
+        private AuditService $audit,
+        private Google2FA $google2fa,
+    ) {}
 
     public function update(UpdateProfileRequest $request): JsonResponse
     {
@@ -51,8 +56,14 @@ class ProfileController extends Controller
         $user = $request->user();
         $data = $request->validated();
 
-        if (! Hash::check($data['current_password'], $user->password)) {
-            return response()->json(['message' => 'La contraseña actual es incorrecta.'], 422);
+        if ($user->two_factor_enabled) {
+            if (! $this->google2fa->verifyKey($user->two_factor_secret, $data['otp'])) {
+                throw ValidationException::withMessages(['otp' => ['Código OTP incorrecto.']]);
+            }
+        } else {
+            if (! Hash::check($data['current_password'], $user->password)) {
+                return response()->json(['message' => 'La contraseña actual es incorrecta.'], 422);
+            }
         }
 
         $user->update(['password' => Hash::make($data['password'])]);
