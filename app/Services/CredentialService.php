@@ -53,6 +53,10 @@ class CredentialService
             'type'     => $data['type'] ?? null,
         ], fn ($v) => $v !== null);
 
+        if (array_key_exists('image_id', $data)) {
+            $updates['image_id'] = $data['image_id'];
+        }
+
         if (isset($data['password'])) {
             ['ciphertext' => $encPwd, 'iv' => $iv] = $this->encryption->encrypt($data['password']);
             $updates['encrypted_password'] = $encPwd;
