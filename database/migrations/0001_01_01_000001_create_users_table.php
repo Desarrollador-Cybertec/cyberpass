@@ -16,7 +16,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();
             $table->string('google_id')->nullable()->unique();
-            $table->enum('role', ['sysadmin', 'org_admin', 'org_user'])->default('org_user');
+            $table->enum('role', ['sysadmin', 'org_admin', 'org_user', 'user'])->default('org_user');
             $table->enum('account_type', ['personal', 'enterprise', 'sysadmin'])->default('personal');
             $table->string('two_factor_secret')->nullable();
             $table->boolean('two_factor_enabled')->default(false);
