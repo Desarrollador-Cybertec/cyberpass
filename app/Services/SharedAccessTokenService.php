@@ -14,12 +14,21 @@ class SharedAccessTokenService
 
     public function create(Credential $credential, User $creator, array $data): SharedAccessToken
     {
+        $expiresAt = match (true) {
+            isset($data['expires_at'])  => $data['expires_at'],
+            isset($data['expires_in'])  => match ($data['expires_in']['unit']) {
+                'minutes' => now()->addMinutes((int) $data['expires_in']['value']),
+                'hours'   => now()->addHours((int) $data['expires_in']['value']),
+            },
+            default => null,
+        };
+
         return SharedAccessToken::create([
             'credential_id' => $credential->id,
             'created_by'    => $creator->id,
             'token'         => Str::random(64),
             'pin_hash'      => isset($data['pin']) ? Hash::make($data['pin']) : null,
-            'expires_at'    => $data['expires_at'] ?? null,
+            'expires_at'    => $expiresAt,
             'max_uses'      => $data['max_uses'] ?? null,
         ]);
     }
