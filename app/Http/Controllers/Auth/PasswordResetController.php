@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\AuditService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -36,6 +37,28 @@ class PasswordResetController extends Controller
 
         // Always 200 — do not reveal whether the email exists
         return response()->json(['message' => 'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.']);
+    }
+
+    public function verify(Request $request): JsonResponse
+    {
+        $token = $request->query('token');
+        $email = $request->query('email');
+
+        if (! $token || ! $email) {
+            return response()->json(['valid' => false], 422);
+        }
+
+        $record = DB::table('password_reset_tokens')->where('email', $email)->first();
+
+        if (! $record || ! Hash::check($token, $record->token)) {
+            return response()->json(['valid' => false], 422);
+        }
+
+        if (Carbon::parse($record->created_at)->addMinutes(60)->isPast()) {
+            return response()->json(['valid' => false, 'reason' => 'expired'], 422);
+        }
+
+        return response()->json(['valid' => true]);
     }
 
     public function reset(ResetPasswordRequest $request): JsonResponse

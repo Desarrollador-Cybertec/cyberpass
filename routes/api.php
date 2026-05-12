@@ -36,6 +36,7 @@ Route::prefix('auth')->group(function () {
     Route::post('login/2fa', [AuthController::class, 'verify2fa'])->middleware('throttle:3,1');
     Route::post('invitations/accept', [InvitationController::class, 'accept'])->middleware('throttle:10,1');
     Route::post('forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
+    Route::get('verify-reset-token', [PasswordResetController::class, 'verify'])->middleware('throttle:10,1');
     Route::post('reset-password', [PasswordResetController::class, 'reset'])->middleware('throttle:5,1');
 
     Route::get('google/redirect', [GoogleAuthController::class, 'redirect']);
