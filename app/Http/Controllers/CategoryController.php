@@ -52,6 +52,7 @@ class CategoryController extends Controller
 
     public function update(UpdateCategoryRequest $request, Organization $organization, Category $category): JsonResponse
     {
+        $this->authorize('update', $category);
         abort_if($category->organization_id !== $organization->id, 404);
 
         $category = $this->service->updateCategory($category, $request->validated());

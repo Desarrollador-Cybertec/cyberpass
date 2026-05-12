@@ -23,11 +23,12 @@ class UserResource extends JsonResource
             'two_factor_enabled'    => $this->two_factor_enabled,
             'is_active'             => $this->is_active,
             'last_login_at'         => $this->last_login_at,
-            'organization'          => $this->whenLoaded('organization', fn () => [
+            'organization'          => $this->whenLoaded('organization', fn () => $this->organization ? [
                 'id'   => $this->organization->id,
                 'name' => $this->organization->name,
                 'slug' => $this->organization->slug,
-            ]),
+            ] : null),
+            'vault_enabled'         => true,
         ];
     }
 }

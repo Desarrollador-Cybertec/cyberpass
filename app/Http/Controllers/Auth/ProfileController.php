@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use PragmaRX\Google2FA\Google2FA;
@@ -75,5 +76,22 @@ class ProfileController extends Controller
         $this->audit->log($user, 'password_changed', User::class, $user->id);
 
         return response()->json(['message' => 'Contraseña actualizada correctamente.']);
+    }
+
+    public function deleteAccount(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->account_type !== 'personal') {
+            return response()->json(['message' => 'Solo las cuentas personales pueden eliminarse desde aquí.'], 403);
+        }
+
+        $user->tokens()->delete();
+
+        $this->audit->log($user, 'delete', User::class, $user->id);
+
+        $user->delete();
+
+        return response()->json(['message' => 'Cuenta eliminada correctamente.']);
     }
 }

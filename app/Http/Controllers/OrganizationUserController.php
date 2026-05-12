@@ -23,7 +23,14 @@ class OrganizationUserController extends Controller
     {
         $this->authorize('manageUsers', $organization);
 
-        $users = $organization->users()->latest()->paginate(20);
+        $users = $organization->users()
+            ->when($request->query('role'), fn ($q, $r) => $q->where('role', $r))
+            ->when($request->query('is_active'), fn ($q, $v) => $q->where('is_active', filter_var($v, FILTER_VALIDATE_BOOLEAN)))
+            ->when($request->query('q'), fn ($q, $s) => $q->where(function ($sub) use ($s) {
+                $sub->where('name', 'ILIKE', "%{$s}%")->orWhere('email', 'ILIKE', "%{$s}%");
+            }))
+            ->latest()
+            ->paginate(20);
 
         return response()->json(OrganizationUserResource::collection($users)->response()->getData(true));
     }
@@ -61,5 +68,63 @@ class OrganizationUserController extends Controller
         $this->audit->log($request->user(), 'delete', User::class, $user->id);
 
         return response()->json(['message' => 'Usuario desactivado.']);
+    }
+
+    public function suspend(Request $request, Organization $organization, User $user): JsonResponse
+    {
+        $this->authorize('manageUsers', $organization);
+        abort_if($user->organization_id !== $organization->id, 404);
+
+        $this->service->suspendUser($user);
+
+        $this->audit->log($request->user(), 'suspend', User::class, $user->id, [
+            'organization_id' => $organization->id,
+        ]);
+
+        return response()->json(['message' => 'Usuario suspendido.']);
+    }
+
+    public function activate(Request $request, Organization $organization, User $user): JsonResponse
+    {
+        $this->authorize('manageUsers', $organization);
+        abort_if($user->organization_id !== $organization->id, 404);
+
+        $this->service->activateUser($user);
+
+        $this->audit->log($request->user(), 'activate', User::class, $user->id, [
+            'organization_id' => $organization->id,
+        ]);
+
+        return response()->json(['message' => 'Usuario activado.']);
+    }
+
+    public function makeAdmin(Request $request, Organization $organization, User $user): JsonResponse
+    {
+        abort_if(! $request->user()->isSysAdmin(), 403, 'Solo el sysadmin puede cambiar roles.');
+        abort_if($user->organization_id !== $organization->id, 404);
+
+        $this->service->changeRole($user, 'org_admin');
+
+        $this->audit->log($request->user(), 'assign', User::class, $user->id, [
+            'organization_id' => $organization->id,
+            'role'            => 'org_admin',
+        ]);
+
+        return response()->json(['message' => 'Usuario promovido a org_admin.']);
+    }
+
+    public function makeUser(Request $request, Organization $organization, User $user): JsonResponse
+    {
+        abort_if(! $request->user()->isSysAdmin(), 403, 'Solo el sysadmin puede cambiar roles.');
+        abort_if($user->organization_id !== $organization->id, 404);
+
+        $this->service->changeRole($user, 'org_user');
+
+        $this->audit->log($request->user(), 'assign', User::class, $user->id, [
+            'organization_id' => $organization->id,
+            'role'            => 'org_user',
+        ]);
+
+        return response()->json(['message' => 'Usuario degradado a org_user.']);
     }
 }

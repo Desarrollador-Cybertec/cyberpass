@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
 use App\Http\Controllers\Auth\InvitationController;
+use App\Http\Controllers\Auth\ActivityController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Auth\TwoFactorController;
@@ -61,6 +62,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('me', [AuthController::class, 'me']);
         Route::put('profile', [ProfileController::class, 'update']);
         Route::post('change-password', [ProfileController::class, 'changePassword']);
+        Route::delete('account', [ProfileController::class, 'deleteAccount']);
+        Route::get('activity', [ActivityController::class, 'index']);
 
         Route::prefix('2fa')->group(function () {
             Route::post('setup', [TwoFactorController::class, 'setup']);
@@ -85,6 +88,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::apiResource('users', OrganizationUserController::class)
             ->only(['index', 'store', 'update', 'destroy']);
+
+        Route::patch('users/{user}/suspend', [OrganizationUserController::class, 'suspend']);
+        Route::patch('users/{user}/activate', [OrganizationUserController::class, 'activate']);
+        Route::post('users/{user}/make-admin', [OrganizationUserController::class, 'makeAdmin']);
+        Route::post('users/{user}/make-user', [OrganizationUserController::class, 'makeUser']);
 
         Route::apiResource('divisions', OrganizationDivisionController::class);
 

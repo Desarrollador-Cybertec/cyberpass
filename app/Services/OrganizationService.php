@@ -6,6 +6,7 @@ use App\Mail\OrganizationInvitationMail;
 use App\Models\Division;
 use App\Models\Organization;
 use App\Models\OrganizationDomain;
+use App\Models\OrganizationInvitation;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -53,25 +54,33 @@ class OrganizationService
 
     public function inviteUser(Organization $organization, array $data): User
     {
-        $user = User::create([
-            'organization_id' => $organization->id,
-            'name'            => $data['name'],
-            'email'           => $data['email'],
-            'password'        => Hash::make(Str::random(32)),
-            'role'            => $data['role'],
-            'account_type'    => 'enterprise',
-            'is_active'       => false,
-        ]);
+        $existingUser = User::where('email', $data['email'])->first();
+
+        if (! $existingUser) {
+            $user = User::create([
+                'organization_id' => $organization->id,
+                'name'            => $data['name'],
+                'email'           => $data['email'],
+                'password'        => Hash::make(Str::random(32)),
+                'role'            => $data['role'],
+                'account_type'    => 'enterprise',
+                'is_active'       => false,
+            ]);
+        } else {
+            $user = $existingUser;
+        }
 
         $token = Str::random(64);
 
-        DB::table('password_reset_tokens')->upsert(
+        OrganizationInvitation::updateOrCreate(
+            ['email' => $user->email],
             [
-                'email'      => $user->email,
-                'token'      => Hash::make($token),
-                'created_at' => Carbon::now(),
-            ],
-            ['email']
+                'organization_id' => $organization->id,
+                'role'            => $data['role'],
+                'token_hash'      => Hash::make($token),
+                'expires_at'      => Carbon::now()->addDays(7),
+                'created_at'      => Carbon::now(),
+            ]
         );
 
         Mail::to($user->email)->send(new OrganizationInvitationMail($user, $organization, $token));
@@ -89,6 +98,21 @@ class OrganizationService
     public function deactivateUser(User $user): void
     {
         $user->update(['is_active' => false]);
+    }
+
+    public function suspendUser(User $user): void
+    {
+        $user->update(['is_active' => false]);
+    }
+
+    public function activateUser(User $user): void
+    {
+        $user->update(['is_active' => true]);
+    }
+
+    public function changeRole(User $user, string $role): void
+    {
+        $user->update(['role' => $role]);
     }
 
     public function removeUser(User $user): void
