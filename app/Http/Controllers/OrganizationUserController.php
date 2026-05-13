@@ -26,9 +26,13 @@ class OrganizationUserController extends Controller
         $users = $organization->users()
             ->when($request->query('role'), fn ($q, $r) => $q->where('role', $r))
             ->when($request->query('is_active'), fn ($q, $v) => $q->where('is_active', filter_var($v, FILTER_VALIDATE_BOOLEAN)))
-            ->when($request->query('q'), fn ($q, $s) => $q->where(function ($sub) use ($s) {
-                $sub->where('name', 'ILIKE', "%{$s}%")->orWhere('email', 'ILIKE', "%{$s}%");
-            }))
+            ->when($request->query('q'), function ($q, $s) {
+                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $s);
+
+                return $q->where(function ($sub) use ($escaped) {
+                    $sub->where('name', 'ILIKE', "%{$escaped}%")->orWhere('email', 'ILIKE', "%{$escaped}%");
+                });
+            })
             ->latest()
             ->paginate(20);
 

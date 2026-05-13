@@ -21,8 +21,11 @@ class CredentialSearchController extends Controller
 
         $credentials = Credential::with('image')
             ->where('organization_id', $organization->id)
-            ->when($request->query('q'), fn ($q, $s) => $q->where('name', 'ILIKE', "%{$s}%")
-                ->orWhere('username', 'ILIKE', "%{$s}%"))
+            ->when($request->query('q'), function ($q, $s) {
+                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $s);
+
+                return $q->where('name', 'ILIKE', "%{$escaped}%")->orWhere('username', 'ILIKE', "%{$escaped}%");
+            })
             ->when($request->query('category_id'), fn ($q, $id) => $q->where('category_id', $id))
             ->when($request->query('division_id'), fn ($q, $id) => $q->whereHas('category', fn ($c) => $c->where('division_id', $id)))
             ->when($request->query('type'), fn ($q, $t) => $q->where('type', $t))

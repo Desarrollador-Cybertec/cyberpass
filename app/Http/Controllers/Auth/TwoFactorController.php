@@ -11,6 +11,7 @@ use BaconQrCode\Renderer\RendererStyle\RendererStyle;
 use BaconQrCode\Writer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -26,7 +27,9 @@ class TwoFactorController extends Controller
         $user = $request->user();
         $secret = $this->google2fa->generateSecretKey();
 
-        $user->update(['two_factor_secret' => $secret]);
+        // Almacenar en caché temporalmente hasta que el usuario confirme con OTP.
+        // No se persiste en DB hasta que enable() valide el código correctamente.
+        Cache::put("2fa_pending_setup_{$user->id}", $secret, now()->addMinutes(10));
 
         $qrUri = $this->google2fa->getQRCodeUrl(config('app.name'), $user->email, $secret);
 
@@ -41,16 +44,22 @@ class TwoFactorController extends Controller
     {
         $user = $request->user();
 
-        if (! $user->two_factor_secret) {
-            return response()->json(['message' => 'Primero ejecuta el setup de 2FA.'], 422);
+        $pendingSecret = Cache::get("2fa_pending_setup_{$user->id}");
+
+        if (! $pendingSecret) {
+            return response()->json(['message' => 'El setup de 2FA expiró o no fue iniciado. Vuelve a ejecutar el setup.'], 422);
         }
 
-        $this->validateOtp($user->two_factor_secret, $request->validated('otp'));
+        $this->validateOtp($pendingSecret, $request->validated('otp'));
 
-        $user->update([
+        // Solo ahora se persiste en DB, confirmando que el usuario tiene acceso al autenticador
+        $user->forceFill([
+            'two_factor_secret'       => $pendingSecret,
             'two_factor_enabled'      => true,
             'two_factor_confirmed_at' => now(),
-        ]);
+        ])->save();
+
+        Cache::forget("2fa_pending_setup_{$user->id}");
 
         $this->audit->log($user, '2fa_enabled');
 

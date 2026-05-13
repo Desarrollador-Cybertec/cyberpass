@@ -24,8 +24,11 @@ class CredentialController extends Controller
         $this->authorize('viewAny', [Credential::class, $category]);
 
         $credentials = $category->credentials()
-            ->when($request->query('q'), fn ($q, $s) => $q->where('name', 'ILIKE', "%{$s}%")
-                ->orWhere('username', 'ILIKE', "%{$s}%"))
+            ->when($request->query('q'), function ($q, $s) {
+                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $s);
+
+                return $q->where('name', 'ILIKE', "%{$escaped}%")->orWhere('username', 'ILIKE', "%{$escaped}%");
+            })
             ->when($request->query('type'), fn ($q, $t) => $q->where('type', $t))
             ->latest()
             ->paginate(20);
@@ -57,6 +60,7 @@ class CredentialController extends Controller
     public function update(UpdateCredentialRequest $request, Category $category, Credential $credential): JsonResponse
     {
         abort_if($credential->category_id !== $category->id, 404);
+        $this->authorize('update', $credential);
 
         $credential = $this->service->update($credential, $request->validated());
 

@@ -7,6 +7,7 @@ use App\Services\AuditService;
 use App\Services\SharedAccessTokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 
 class PublicTokenController extends Controller
@@ -38,9 +39,18 @@ class PublicTokenController extends Controller
         $orgId = $record->credential->organization_id;
 
         if ($record->requiresPin()) {
+            $lockoutKey = "pin_attempts_{$token}";
+            $attempts = Cache::get($lockoutKey, 0);
+
+            if ($attempts >= 5) {
+                return response()->json(['message' => 'Token bloqueado por múltiples intentos fallidos. Intenta en 15 minutos.'], 429);
+            }
+
             $pin = $request->input('pin');
 
             if (! $pin || ! Hash::check($pin, $record->pin_hash)) {
+                Cache::put($lockoutKey, $attempts + 1, now()->addMinutes(15));
+
                 $this->audit->log(null, 'claim_failed', SharedAccessToken::class, $record->id, [
                     'reason'        => 'invalid_pin',
                     'credential_id' => $record->credential_id,
@@ -48,6 +58,8 @@ class PublicTokenController extends Controller
 
                 return response()->json(['message' => 'PIN incorrecto.'], 403);
             }
+
+            Cache::forget($lockoutKey);
         }
 
         $payload = $this->service->claim($record, $request->input('pin'));

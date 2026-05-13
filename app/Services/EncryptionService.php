@@ -20,11 +20,13 @@ class EncryptionService
             throw new RuntimeException('CREDENTIAL_ENCRYPTION_KEY is not set.');
         }
 
-        $this->key = base64_decode($rawKey);
+        $decoded = base64_decode($rawKey, true);
 
-        if (strlen($this->key) !== 32) {
-            throw new RuntimeException('CREDENTIAL_ENCRYPTION_KEY must decode to exactly 32 bytes.');
+        if ($decoded === false || strlen($decoded) !== 32) {
+            throw new RuntimeException('CREDENTIAL_ENCRYPTION_KEY must decode to exactly 32 bytes (invalid base64 or wrong length).');
         }
+
+        $this->key = $decoded;
     }
 
     public function encrypt(string $plaintext): array

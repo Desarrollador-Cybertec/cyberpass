@@ -25,16 +25,19 @@ class ProfileController extends Controller
         $user = $request->user();
         $data = $request->validated();
 
-        // Enterprise users with a verified domain cannot change their email
+        // Enterprise users must keep email on their organization's verified domains
         if (isset($data['email']) && $data['email'] !== $user->email) {
-            $hasVerifiedDomain = $user->organization?->domains()
+            $verifiedDomains = $user->organization?->domains()
                 ->where('is_verified', true)
-                ->exists();
+                ->pluck('domain');
 
-            if ($hasVerifiedDomain) {
-                return response()->json([
-                    'message' => 'No puedes cambiar tu email en una organización con dominio verificado.',
-                ], 422);
+            if ($verifiedDomains && $verifiedDomains->isNotEmpty()) {
+                $newEmailDomain = substr(strrchr($data['email'], '@'), 1);
+                if (! $verifiedDomains->contains($newEmailDomain)) {
+                    return response()->json([
+                        'message' => 'El nuevo email debe pertenecer a un dominio verificado de tu organización.',
+                    ], 422);
+                }
             }
         }
 

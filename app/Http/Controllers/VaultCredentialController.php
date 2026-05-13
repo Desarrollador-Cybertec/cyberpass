@@ -23,8 +23,11 @@ class VaultCredentialController extends Controller
         abort_if($category->user_id !== $request->user()->id, 403);
 
         $credentials = $category->credentials()
-            ->when($request->query('q'), fn ($q, $s) => $q->where('name', 'ILIKE', "%{$s}%")
-                ->orWhere('username', 'ILIKE', "%{$s}%"))
+            ->when($request->query('q'), function ($q, $s) {
+                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $s);
+
+                return $q->where('name', 'ILIKE', "%{$escaped}%")->orWhere('username', 'ILIKE', "%{$escaped}%");
+            })
             ->when($request->query('type'), fn ($q, $t) => $q->where('type', $t))
             ->latest()
             ->paginate(20);

@@ -54,34 +54,40 @@ class OrganizationService
 
     public function inviteUser(Organization $organization, array $data): User
     {
-        $existingUser = User::where('email', $data['email'])->first();
-
-        if (! $existingUser) {
-            $user = User::create([
-                'organization_id' => $organization->id,
-                'name'            => $data['name'],
-                'email'           => $data['email'],
-                'password'        => Hash::make(Str::random(32)),
-                'role'            => $data['role'],
-                'account_type'    => 'enterprise',
-                'is_active'       => false,
-            ]);
-        } else {
-            $user = $existingUser;
-        }
-
         $token = Str::random(64);
 
-        OrganizationInvitation::updateOrCreate(
-            ['email' => $user->email],
-            [
-                'organization_id' => $organization->id,
-                'role'            => $data['role'],
-                'token_hash'      => Hash::make($token),
-                'expires_at'      => Carbon::now()->addDays(7),
-                'created_at'      => Carbon::now(),
-            ]
-        );
+        $user = DB::transaction(function () use ($organization, $data, $token) {
+            $user = User::firstOrCreate(
+                ['email' => $data['email']],
+                [
+                    'name'         => $data['name'],
+                    'password'     => Hash::make(Str::random(32)),
+                    'account_type' => 'enterprise',
+                    'is_active'    => false,
+                ]
+            );
+
+            // Asignar campos privilegiados solo via forceFill (no mass assignment)
+            if ($user->wasRecentlyCreated) {
+                $user->forceFill([
+                    'organization_id' => $organization->id,
+                    'role'            => $data['role'],
+                ])->save();
+            }
+
+            OrganizationInvitation::updateOrCreate(
+                ['email' => $user->email],
+                [
+                    'organization_id' => $organization->id,
+                    'role'            => $data['role'],
+                    'token_hash'      => Hash::make($token),
+                    'expires_at'      => Carbon::now()->addDays(7),
+                    'created_at'      => Carbon::now(),
+                ]
+            );
+
+            return $user;
+        });
 
         Mail::to($user->email)->send(new OrganizationInvitationMail($user, $organization, $token));
 

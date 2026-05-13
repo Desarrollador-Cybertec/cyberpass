@@ -49,6 +49,7 @@ class OrganizationDivisionController extends Controller
 
     public function update(UpdateDivisionRequest $request, Organization $organization, Division $division): JsonResponse
     {
+        $this->authorize('manageDivisions', $organization);
         abort_if($division->organization_id !== $organization->id, 404);
 
         $division = $this->service->updateDivision($division, $request->validated());

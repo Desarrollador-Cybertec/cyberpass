@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\OrganizationDomain;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class DomainVerificationService
@@ -35,7 +36,12 @@ class DomainVerificationService
 
         $expectedRecord = self::TOKEN_PREFIX.$domain->verification_token;
 
-        $records = @dns_get_record($domain->domain, DNS_TXT) ?: [];
+        try {
+            $records = dns_get_record($domain->domain, DNS_TXT) ?: [];
+        } catch (\Throwable $e) {
+            Log::warning('DNS TXT lookup failed', ['domain' => $domain->domain, 'error' => $e->getMessage()]);
+            $records = [];
+        }
 
         $found = collect($records)->contains(function ($record) use ($expectedRecord) {
             $txt = $record['txt'] ?? $record['entries'][0] ?? '';

@@ -17,18 +17,22 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'organization_id',
         'name',
         'email',
         'password',
         'google_id',
+        'last_login_at',
+    ];
+
+    // Campos solo modificables por el sistema internamente via forceFill()
+    protected $guarded = [
+        'organization_id',
         'role',
         'account_type',
         'two_factor_secret',
         'two_factor_enabled',
         'two_factor_confirmed_at',
         'is_active',
-        'last_login_at',
     ];
 
     protected $hidden = [
