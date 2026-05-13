@@ -11,7 +11,11 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api\" -Force)",
       "Bash(Select-Object Name, FullName)",
-      "PowerShell(head -30)"
+      "PowerShell(head -30)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api\\\\app\\\\Models\\\\\" -Recurse | Where-Object {$_.Name -match \"Shared\"})",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api\\\\app\\\\Http\\\\Controllers\\\\\" | Where-Object {$_.Name -match \"Organization|Audit\"})",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api\\\\app\\\\\" -Recurse | Where-Object {$_.Name -match \"Exception|Handler\"})",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\juanc\\\\Herd\\\\cyberpass-api\" -Depth 1 | Where-Object {$_.PSIsContainer})"
     ]
   }
 }

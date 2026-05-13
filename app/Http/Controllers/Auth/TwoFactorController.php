@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\EnableTwoFactorRequest;
 use App\Services\AuditService;
+use BaconQrCode\Renderer\Image\ImagickImageBackEnd;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -34,9 +35,9 @@ class TwoFactorController extends Controller
         $qrUri = $this->google2fa->getQRCodeUrl(config('app.name'), $user->email, $secret);
 
         return response()->json([
-            'secret' => $secret,
-            'qr_svg' => $this->renderQrSvg($qrUri),
-            'qr_uri' => $qrUri,
+            'secret'     => $secret,
+            'qr_data_url' => $this->renderQrPng($qrUri),
+            'qr_uri'     => $qrUri,
         ]);
     }
 
@@ -50,7 +51,7 @@ class TwoFactorController extends Controller
             return response()->json(['message' => 'El setup de 2FA expiró o no fue iniciado. Vuelve a ejecutar el setup.'], 422);
         }
 
-        $this->validateOtp($pendingSecret, $request->validated('otp'));
+        $this->validateOtp($pendingSecret, $request->validated('otp'), $user);
 
         // Solo ahora se persiste en DB, confirmando que el usuario tiene acceso al autenticador
         $user->forceFill([
@@ -70,7 +71,7 @@ class TwoFactorController extends Controller
     {
         $user = $request->user();
 
-        $this->validateOtp($user->two_factor_secret, $request->validated('otp'));
+        $this->validateOtp($user->two_factor_secret, $request->validated('otp'), $user);
 
         $user->update([
             'two_factor_secret'       => null,
@@ -83,22 +84,33 @@ class TwoFactorController extends Controller
         return response()->json(['message' => '2FA desactivado correctamente.']);
     }
 
-    private function validateOtp(string $secret, string $otp): void
+    private function validateOtp(string $secret, string $otp, ?object $user = null): void
     {
         if (! $this->google2fa->verifyKey($secret, $otp)) {
+            if ($user instanceof \App\Models\User) {
+                $this->audit->log($user, '2fa_otp_failed');
+            }
             throw ValidationException::withMessages([
                 'otp' => ['Código OTP incorrecto.'],
             ]);
         }
     }
 
-    private function renderQrSvg(string $uri): string
+    private function renderQrPng(string $uri): string
     {
-        $renderer = new ImageRenderer(
-            new RendererStyle(200),
-            new SvgImageBackEnd,
-        );
+        if (extension_loaded('imagick')) {
+            $backend = new ImagickImageBackEnd;
+        } else {
+            // fallback: SVG wrapped en data URL (sin innerHTML en el frontend)
+            $renderer = new ImageRenderer(new RendererStyle(200), new SvgImageBackEnd);
+            $svg = (new Writer($renderer))->writeString($uri);
 
-        return (new Writer($renderer))->writeString($uri);
+            return 'data:image/svg+xml;base64,' . base64_encode($svg);
+        }
+
+        $renderer = new ImageRenderer(new RendererStyle(200), $backend);
+        $png = (new Writer($renderer))->writeString($uri);
+
+        return 'data:image/png;base64,' . base64_encode($png);
     }
 }
