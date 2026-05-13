@@ -38,9 +38,9 @@ class AuthController extends Controller
                 $request->validated('password'),
             );
         } catch (ValidationException $e) {
-            $this->audit->log(null, 'login_failed', metadata: [
+            rescue(fn () => $this->audit->log(null, 'login_failed', metadata: [
                 'email' => $request->validated('email'),
-            ]);
+            ]));
             throw $e;
         }
 
@@ -67,7 +67,7 @@ class AuthController extends Controller
                 $request->validated('otp'),
             );
         } catch (ValidationException $e) {
-            $this->audit->log(null, '2fa_failed');
+            rescue(fn () => $this->audit->log(null, '2fa_failed'));
             throw $e;
         }
 
