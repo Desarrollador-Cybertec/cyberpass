@@ -62,7 +62,7 @@ class CredentialController extends Controller
         abort_if($credential->category_id !== $category->id, 404);
         $this->authorize('update', $credential);
 
-        $credential = $this->service->update($credential, $request->validated());
+        $credential = $this->service->update($credential, $request->validated(), $request->user());
 
         $this->audit->log($request->user(), 'update', Credential::class, $credential->id);
 

@@ -79,7 +79,7 @@ class VaultCredentialController extends Controller
             'image_id' => ['sometimes', 'nullable', 'integer', 'exists:images,id'],
         ]);
 
-        $credential = $this->service->update($credential, $data);
+        $credential = $this->service->update($credential, $data, $request->user());
 
         $this->audit->log($request->user(), 'update', Credential::class, $credential->id);
 

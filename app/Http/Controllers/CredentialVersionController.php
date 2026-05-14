@@ -52,7 +52,7 @@ class CredentialVersionController extends Controller
         abort_if($credential->category_id !== $category->id, 404);
         abort_if($version->credential_id !== $credential->id, 404);
 
-        $updated = $this->service->restoreVersion($credential, $version);
+        $updated = $this->service->restoreVersion($credential, $version, $request->user());
 
         $this->audit->log($request->user(), 'update', Credential::class, $credential->id, [
             'restored_version_id' => $version->id,

@@ -7,6 +7,7 @@ use App\Models\Credential;
 use App\Models\CredentialVersion;
 use App\Models\Organization;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class CredentialService
 {
@@ -64,10 +65,10 @@ class CredentialService
         ]);
     }
 
-    public function update(Credential $credential, array $data): Credential
+    public function update(Credential $credential, array $data, ?User $actor = null): Credential
     {
         $credential->versions()->create([
-            'changed_by'         => $credential->created_by,
+            'changed_by'         => $this->resolveActor($actor)->id,
             'username'           => $credential->username,
             'encrypted_password' => $credential->encrypted_password,
             'iv'                 => $credential->iv,
@@ -129,11 +130,11 @@ class CredentialService
         return $this->encryption->decrypt($version->encrypted_password, $version->iv);
     }
 
-    public function restoreVersion(Credential $credential, CredentialVersion $version): Credential
+    public function restoreVersion(Credential $credential, CredentialVersion $version, ?User $actor = null): Credential
     {
         // Snapshot current state before overwriting
         $credential->versions()->create([
-            'changed_by'         => $credential->created_by,
+            'changed_by'         => $this->resolveActor($actor)->id,
             'username'           => $credential->username,
             'encrypted_password' => $credential->encrypted_password,
             'iv'                 => $credential->iv,
@@ -146,5 +147,16 @@ class CredentialService
         ]);
 
         return $credential->fresh();
+    }
+
+    private function resolveActor(?User $actor = null): User
+    {
+        $authenticatedUser = $actor ?? Auth::user();
+
+        if (! $authenticatedUser instanceof User) {
+            throw new \RuntimeException('No authenticated user available for credential versioning.');
+        }
+
+        return $authenticatedUser;
     }
 }

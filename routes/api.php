@@ -54,16 +54,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Auth
+    | Auth — Rutas exentas de verificación TOTP
+    | (logout, me, y el setup/enable/disable de 2FA necesitan funcionar
+    |  aunque el usuario aún no haya completado la configuración)
     |--------------------------------------------------------------------------
     */
     Route::prefix('auth')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
-        Route::put('profile', [ProfileController::class, 'update']);
-        Route::post('change-password', [ProfileController::class, 'changePassword']);
-        Route::delete('account', [ProfileController::class, 'deleteAccount']);
-        Route::get('activity', [ActivityController::class, 'index']);
 
         Route::prefix('2fa')->group(function () {
             Route::post('setup', [TwoFactorController::class, 'setup']);
@@ -74,93 +72,115 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Organizations
+    | Rutas protegidas — requieren TOTP configurado
     |--------------------------------------------------------------------------
     */
-    Route::apiResource('organizations', OrganizationController::class);
+    Route::middleware(\App\Http\Middleware\EnsureTwoFactorSetup::class)->group(function () {
 
-    Route::prefix('organizations/{organization}')->group(function () {
-        Route::apiResource('domains', OrganizationDomainController::class)
-            ->only(['index', 'store', 'destroy']);
-
-        Route::post('domains/{domain}/verify/initiate', [DomainVerificationController::class, 'initiate']);
-        Route::post('domains/{domain}/verify/confirm', [DomainVerificationController::class, 'confirm']);
-
-        Route::apiResource('users', OrganizationUserController::class)
-            ->only(['index', 'store', 'update', 'destroy']);
-
-        Route::patch('users/{user}/suspend', [OrganizationUserController::class, 'suspend']);
-        Route::patch('users/{user}/activate', [OrganizationUserController::class, 'activate']);
-        Route::post('users/{user}/make-admin', [OrganizationUserController::class, 'makeAdmin']);
-        Route::post('users/{user}/make-user', [OrganizationUserController::class, 'makeUser']);
-
-        Route::apiResource('divisions', OrganizationDivisionController::class);
-
-        Route::apiResource('categories', CategoryController::class);
-
-        Route::get('audit-logs', [AuditLogController::class, 'forOrganization']);
-
-        Route::get('credentials', [CredentialSearchController::class, 'index']);
-        Route::get('credentials/export', [CredentialExportController::class, 'export'])->middleware('throttle:3,60');
-    });
-
-    Route::get('audit-logs', [AuditLogController::class, 'index']);
-
-    /*
-    |--------------------------------------------------------------------------
-    | Credentials (scoped to category)
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('categories/{category}')->group(function () {
-        Route::apiResource('credentials', CredentialController::class);
-        Route::get('credentials/{credential}/reveal', [CredentialController::class, 'reveal']);
-
-        Route::prefix('credentials/{credential}/versions')->group(function () {
-            Route::get('/', [CredentialVersionController::class, 'index']);
-            Route::get('{version}/reveal', [CredentialVersionController::class, 'reveal']);
-            Route::post('{version}/restore', [CredentialVersionController::class, 'restore']);
+        /*
+        |----------------------------------------------------------------------
+        | Auth — Gestión de cuenta (requieren TOTP)
+        |----------------------------------------------------------------------
+        */
+        Route::prefix('auth')->group(function () {
+            Route::put('profile', [ProfileController::class, 'update']);
+            Route::post('change-password', [ProfileController::class, 'changePassword']);
+            Route::delete('account', [ProfileController::class, 'deleteAccount']);
+            Route::get('activity', [ActivityController::class, 'index']);
         });
-    });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Personal Vault
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('vault/categories')->group(function () {
-        Route::get('/', [VaultCategoryController::class, 'index']);
-        Route::post('/', [VaultCategoryController::class, 'store']);
-        Route::get('{category}', [VaultCategoryController::class, 'show']);
-        Route::put('{category}', [VaultCategoryController::class, 'update']);
-        Route::delete('{category}', [VaultCategoryController::class, 'destroy']);
+        /*
+        |----------------------------------------------------------------------
+        | Organizations
+        |----------------------------------------------------------------------
+        */
+        Route::apiResource('organizations', OrganizationController::class);
 
-        Route::prefix('{category}/credentials')->group(function () {
-            Route::get('/', [VaultCredentialController::class, 'index']);
-            Route::post('/', [VaultCredentialController::class, 'store']);
-            Route::get('{credential}', [VaultCredentialController::class, 'show']);
-            Route::put('{credential}', [VaultCredentialController::class, 'update']);
-            Route::delete('{credential}', [VaultCredentialController::class, 'destroy']);
-            Route::get('{credential}/reveal', [VaultCredentialController::class, 'reveal']);
+        Route::prefix('organizations/{organization}')->group(function () {
+            Route::apiResource('domains', OrganizationDomainController::class)
+                ->only(['index', 'store', 'destroy']);
+
+            Route::post('domains/{domain}/verify/initiate', [DomainVerificationController::class, 'initiate']);
+            Route::post('domains/{domain}/verify/confirm', [DomainVerificationController::class, 'confirm']);
+
+            Route::apiResource('users', OrganizationUserController::class)
+                ->only(['index', 'store', 'update', 'destroy']);
+
+            Route::patch('users/{user}/suspend', [OrganizationUserController::class, 'suspend']);
+            Route::patch('users/{user}/activate', [OrganizationUserController::class, 'activate']);
+            Route::post('users/{user}/make-admin', [OrganizationUserController::class, 'makeAdmin']);
+            Route::post('users/{user}/make-user', [OrganizationUserController::class, 'makeUser']);
+
+            Route::apiResource('divisions', OrganizationDivisionController::class);
+
+            Route::apiResource('categories', CategoryController::class);
+
+            Route::get('audit-logs', [AuditLogController::class, 'forOrganization']);
+
+            Route::get('credentials', [CredentialSearchController::class, 'index']);
+            Route::get('credentials/export', [CredentialExportController::class, 'export'])->middleware('throttle:3,60');
         });
-    });
 
-    /*
-    |--------------------------------------------------------------------------
-    | Images — Catálogo global del sistema
-    |--------------------------------------------------------------------------
-    */
-    Route::apiResource('images', ImageController::class);
+        Route::get('audit-logs', [AuditLogController::class, 'index']);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Shared Access Tokens (scoped to credential)
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('credentials/{credential}')->group(function () {
-        Route::get('tokens', [SharedAccessTokenController::class, 'index']);
-        Route::post('tokens', [SharedAccessTokenController::class, 'store']);
-        Route::patch('tokens/{token}/revoke', [SharedAccessTokenController::class, 'revoke']);
-    });
+        /*
+        |----------------------------------------------------------------------
+        | Credentials (scoped to category)
+        |----------------------------------------------------------------------
+        */
+        Route::prefix('categories/{category}')->group(function () {
+            Route::apiResource('credentials', CredentialController::class);
+            Route::get('credentials/{credential}/reveal', [CredentialController::class, 'reveal']);
+
+            Route::prefix('credentials/{credential}/versions')->group(function () {
+                Route::get('/', [CredentialVersionController::class, 'index']);
+                Route::get('{version}/reveal', [CredentialVersionController::class, 'reveal']);
+                Route::post('{version}/restore', [CredentialVersionController::class, 'restore']);
+            });
+        });
+
+        /*
+        |----------------------------------------------------------------------
+        | Personal Vault
+        |----------------------------------------------------------------------
+        */
+        Route::prefix('vault/categories')->group(function () {
+            Route::get('/', [VaultCategoryController::class, 'index']);
+            Route::post('/', [VaultCategoryController::class, 'store']);
+            Route::get('{category}', [VaultCategoryController::class, 'show']);
+            Route::put('{category}', [VaultCategoryController::class, 'update']);
+            Route::delete('{category}', [VaultCategoryController::class, 'destroy']);
+
+            Route::prefix('{category}/credentials')->group(function () {
+                Route::get('/', [VaultCredentialController::class, 'index']);
+                Route::post('/', [VaultCredentialController::class, 'store']);
+                Route::get('{credential}', [VaultCredentialController::class, 'show']);
+                Route::put('{credential}', [VaultCredentialController::class, 'update']);
+                Route::delete('{credential}', [VaultCredentialController::class, 'destroy']);
+                Route::get('{credential}/reveal', [VaultCredentialController::class, 'reveal']);
+            });
+        });
+
+        /*
+        |----------------------------------------------------------------------
+        | Images — Catálogo global del sistema
+        |----------------------------------------------------------------------
+        */
+        Route::apiResource('images', ImageController::class);
+
+        /*
+        |----------------------------------------------------------------------
+        | Shared Access Tokens (scoped to credential)
+        |----------------------------------------------------------------------
+        */
+        Route::prefix('credentials/{credential}')->group(function () {
+            Route::get('tokens', [SharedAccessTokenController::class, 'index']);
+            Route::post('tokens', [SharedAccessTokenController::class, 'store']);
+            Route::patch('tokens/{token}/revoke', [SharedAccessTokenController::class, 'revoke']);
+        });
+
+    }); // EnsureTwoFactorSetup
+
 });
 
 /*
