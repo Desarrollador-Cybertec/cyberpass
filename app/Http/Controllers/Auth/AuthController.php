@@ -100,7 +100,9 @@ class AuthController extends Controller
 
     private function activeSessionResponse(array $result): JsonResponse
     {
-        $this->audit->log($result['user'], 'login_blocked_active_session');
+        $this->audit->log($result['user'], 'login_failed', metadata: [
+            'reason' => 'active_session',
+        ]);
 
         return response()->json([
             'message'            => 'Ya existe una sesión activa para este usuario.',

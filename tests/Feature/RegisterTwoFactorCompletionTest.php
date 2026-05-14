@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -104,4 +105,31 @@ it('still enables 2fa for an authenticated existing user', function () {
 
     expect($user->two_factor_enabled)->toBeTrue();
     expect($user->two_factor_confirmed_at)->not->toBeNull();
+});
+
+it('records a 2fa_failed audit entry when an authenticated user submits an invalid otp', function () {
+    $user = User::factory()->create();
+
+    Sanctum::actingAs($user);
+
+    $setupResponse = $this->postJson('/api/auth/2fa/setup')
+        ->assertOk();
+
+    $validOtp = app(Google2FA::class)->getCurrentOtp($setupResponse->json('secret'));
+    $invalidOtp = $validOtp === '000000' ? '000001' : '000000';
+
+    $this->postJson('/api/auth/2fa/enable', [
+        'otp' => $invalidOtp,
+    ])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['otp']);
+
+    $failedOtpAudit = AuditLog::query()
+        ->where('user_id', $user->id)
+        ->where('action', '2fa_failed')
+        ->latest('id')
+        ->first();
+
+    expect($failedOtpAudit)->not->toBeNull();
+    expect($failedOtpAudit->metadata['reason'])->toBe('invalid_otp');
 });

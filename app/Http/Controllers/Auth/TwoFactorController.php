@@ -100,7 +100,9 @@ class TwoFactorController extends Controller
     {
         if (! $this->google2fa->verifyKey($secret, $otp)) {
             if ($user instanceof \App\Models\User) {
-                $this->audit->log($user, '2fa_otp_failed');
+                $this->audit->log($user, '2fa_failed', metadata: [
+                    'reason' => 'invalid_otp',
+                ]);
             }
             throw ValidationException::withMessages([
                 'otp' => ['Código OTP incorrecto.'],

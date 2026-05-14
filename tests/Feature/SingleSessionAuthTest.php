@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -48,6 +49,15 @@ it('returns an active-session response instead of issuing a new token when the s
     expect($user->fresh()->tokens()->count())->toBe(1);
     expect(PersonalAccessToken::findToken($firstToken))->not->toBeNull();
     expect($secondResponse->json('session_expires_at'))->not->toBeNull();
+
+    $activeSessionAudit = AuditLog::query()
+        ->where('user_id', $user->id)
+        ->where('action', 'login_failed')
+        ->latest('id')
+        ->first();
+
+    expect($activeSessionAudit)->not->toBeNull();
+    expect($activeSessionAudit->metadata['reason'])->toBe('active_session');
 
     $this->withToken($firstToken)
         ->getJson('/api/auth/me')
