@@ -48,6 +48,10 @@ it('invalidates the previous token when the same user logs in again', function (
     expect(PersonalAccessToken::findToken($firstToken))->toBeNull();
     expect(PersonalAccessToken::findToken($secondToken))->not->toBeNull();
 
+    $this->withToken($firstToken)
+        ->getJson('/api/auth/me')
+        ->assertUnauthorized();
+
     $this->withToken($secondToken)
         ->getJson('/api/auth/me')
         ->assertOk()
@@ -104,6 +108,10 @@ it('keeps only the latest token after completing 2fa login again', function () {
     expect($user->fresh()->tokens()->count())->toBe(1);
     expect(PersonalAccessToken::findToken($firstToken))->toBeNull();
     expect(PersonalAccessToken::findToken($secondToken))->not->toBeNull();
+
+    $this->withToken($firstToken)
+        ->getJson('/api/auth/me')
+        ->assertUnauthorized();
 
     $this->withToken($secondToken)
         ->getJson('/api/auth/me')

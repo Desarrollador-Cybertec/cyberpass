@@ -52,7 +52,7 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsurePersonalAccessToken::class])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
