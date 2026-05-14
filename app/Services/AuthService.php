@@ -244,8 +244,28 @@ class AuthService
         return [
             'session_active'    => true,
             'user'              => $user->load('organization'),
-            'session_expires_at' => $activeToken->expires_at,
+            'session_expires_at' => $this->resolveTokenExpiration($activeToken),
         ];
+    }
+
+    private function resolveTokenExpiration(PersonalAccessToken $token): ?\Illuminate\Support\Carbon
+    {
+        $expiresAt = $token->expires_at?->copy();
+        $expiration = config('sanctum.expiration');
+
+        if ($expiration === null) {
+            return $expiresAt;
+        }
+
+        $configuredExpiresAt = $token->created_at->copy()->addMinutes(max(1, (int) $expiration));
+
+        if (! $expiresAt) {
+            return $configuredExpiresAt;
+        }
+
+        return $configuredExpiresAt->lessThan($expiresAt)
+            ? $configuredExpiresAt
+            : $expiresAt;
     }
 
     private function findActiveToken(User $user): ?PersonalAccessToken

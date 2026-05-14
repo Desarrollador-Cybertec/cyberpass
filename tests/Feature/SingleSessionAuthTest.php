@@ -116,6 +116,45 @@ it('returns an active-session response before requesting otp when a 2fa user is 
         ->assertJsonPath('email', $user->email);
 });
 
+it('reports the effective session expiration capped by the sanctum config', function () {
+    $user = User::factory()->create([
+        'email'    => 'single-session-expiration@gmail.com',
+        'password' => 'super-secret-123',
+    ]);
+
+    $user->forceFill([
+        'role'         => 'user',
+        'account_type' => 'personal',
+    ])->save();
+
+    $token = $this->postJson('/api/auth/login', [
+        'email'    => $user->email,
+        'password' => 'super-secret-123',
+    ])
+        ->assertOk()
+        ->json('token');
+
+    $storedToken = PersonalAccessToken::findToken($token);
+
+    expect($storedToken)->not->toBeNull();
+
+    $storedToken->forceFill([
+        'expires_at' => $storedToken->created_at->copy()->addHour(),
+    ])->save();
+
+    $response = $this->postJson('/api/auth/login', [
+        'email'    => $user->email,
+        'password' => 'super-secret-123',
+    ])
+        ->assertStatus(409);
+
+    $effectiveExpiration = $storedToken->fresh()->created_at->copy()->addMinutes(
+        max(1, (int) config('sanctum.expiration', 5))
+    );
+
+    expect(Carbon::parse($response->json('session_expires_at'))->equalTo($effectiveExpiration))->toBeTrue();
+});
+
 it('keeps the existing session active when an old 2fa challenge is completed after another login succeeded', function () {
     $secret = app(Google2FA::class)->generateSecretKey();
 
