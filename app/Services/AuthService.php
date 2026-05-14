@@ -105,7 +105,7 @@ class AuthService
 
         return [
             'user'  => $user->load('organization'),
-            'token' => $user->createToken('api')->plainTextToken,
+            'token' => $this->issueSingleSessionToken($user),
         ];
     }
 
@@ -157,7 +157,7 @@ class AuthService
 
         return [
             'user'  => $user->load('organization'),
-            'token' => $user->createToken('api')->plainTextToken,
+            'token' => $this->issueSingleSessionToken($user),
         ];
     }
 
@@ -184,7 +184,7 @@ class AuthService
 
         return [
             'user'  => $user->load('organization'),
-            'token' => $user->createToken('api')->plainTextToken,
+            'token' => $this->issueSingleSessionToken($user),
         ];
     }
 
@@ -208,9 +208,16 @@ class AuthService
 
         return [
             'user'               => $user->load('organization'),
-            'token'              => $user->createToken('api')->plainTextToken,
+            'token'              => $this->issueSingleSessionToken($user),
             'requires_2fa_setup' => ! $user->two_factor_enabled,
         ];
+    }
+
+    private function issueSingleSessionToken(User $user): string
+    {
+        $user->tokens()->delete();
+
+        return $user->createToken('api')->plainTextToken;
     }
 
     private function syncEnterpriseOrganization(User $user): void
