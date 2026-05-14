@@ -12,7 +12,7 @@ return [
      * Configura CORS_ALLOWED_ORIGINS en el .env de producción.
      */
     'allowed_origins' => array_filter(
-        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:4200, https://secure.cyberteconline.com'))
+        explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:4200'))
     ),
 
     'allowed_origins_patterns' => [],
