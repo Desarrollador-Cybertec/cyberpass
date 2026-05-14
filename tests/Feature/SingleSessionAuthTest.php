@@ -13,7 +13,7 @@ beforeEach(function () {
     $this->withoutMiddleware(ThrottleRequests::class);
 });
 
-it('invalidates the previous token when the same user logs in again', function () {
+it('returns an active-session response instead of issuing a new token when the same user logs in again', function () {
     $user = User::factory()->create([
         'email'    => 'single-session@gmail.com',
         'password' => 'super-secret-123',
@@ -36,29 +36,26 @@ it('invalidates the previous token when the same user logs in again', function (
         ->assertOk()
         ->assertJsonPath('email', $user->email);
 
-    $secondToken = $this->postJson('/api/auth/login', [
+    $secondResponse = $this->postJson('/api/auth/login', [
         'email'    => $user->email,
         'password' => 'super-secret-123',
     ])
-        ->assertOk()
-        ->json('token');
+        ->assertStatus(409)
+        ->assertJsonPath('session_active', true)
+        ->assertJsonPath('user.email', $user->email)
+        ->assertJsonPath('message', 'Ya existe una sesión activa para este usuario.');
 
-    expect($secondToken)->not->toBe($firstToken);
     expect($user->fresh()->tokens()->count())->toBe(1);
-    expect(PersonalAccessToken::findToken($firstToken))->toBeNull();
-    expect(PersonalAccessToken::findToken($secondToken))->not->toBeNull();
+    expect(PersonalAccessToken::findToken($firstToken))->not->toBeNull();
+    expect($secondResponse->json('session_expires_at'))->not->toBeNull();
 
     $this->withToken($firstToken)
-        ->getJson('/api/auth/me')
-        ->assertUnauthorized();
-
-    $this->withToken($secondToken)
         ->getJson('/api/auth/me')
         ->assertOk()
         ->assertJsonPath('email', $user->email);
 });
 
-it('keeps only the latest token after completing 2fa login again', function () {
+it('returns an active-session response before requesting otp when a 2fa user is already logged in', function () {
     $secret = app(Google2FA::class)->generateSecretKey();
 
     $user = User::factory()->create([
@@ -89,6 +86,50 @@ it('keeps only the latest token after completing 2fa login again', function () {
         ->assertOk()
         ->json('token');
 
+    $secondResponse = $this->postJson('/api/auth/login', [
+        'email'    => $user->email,
+        'password' => 'super-secret-123',
+    ])
+        ->assertStatus(409)
+        ->assertJsonPath('session_active', true)
+        ->assertJsonPath('user.email', $user->email)
+        ->assertJsonPath('message', 'Ya existe una sesión activa para este usuario.');
+
+    expect($user->fresh()->tokens()->count())->toBe(1);
+    expect(PersonalAccessToken::findToken($firstToken))->not->toBeNull();
+    expect($secondResponse->json('temp_token'))->toBeNull();
+    expect($secondResponse->json('session_expires_at'))->not->toBeNull();
+
+    $this->withToken($firstToken)
+        ->getJson('/api/auth/me')
+        ->assertOk()
+        ->assertJsonPath('email', $user->email);
+});
+
+it('keeps the existing session active when an old 2fa challenge is completed after another login succeeded', function () {
+    $secret = app(Google2FA::class)->generateSecretKey();
+
+    $user = User::factory()->create([
+        'email'    => 'single-session-race@gmail.com',
+        'password' => 'super-secret-123',
+    ]);
+
+    $user->forceFill([
+        'role'                    => 'user',
+        'account_type'            => 'personal',
+        'two_factor_secret'       => $secret,
+        'two_factor_enabled'      => true,
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+
+    $firstTempToken = $this->postJson('/api/auth/login', [
+        'email'    => $user->email,
+        'password' => 'super-secret-123',
+    ])
+        ->assertOk()
+        ->assertJsonPath('requires_2fa', true)
+        ->json('temp_token');
+
     $secondTempToken = $this->postJson('/api/auth/login', [
         'email'    => $user->email,
         'password' => 'super-secret-123',
@@ -97,23 +138,26 @@ it('keeps only the latest token after completing 2fa login again', function () {
         ->assertJsonPath('requires_2fa', true)
         ->json('temp_token');
 
-    $secondToken = $this->postJson('/api/auth/login/2fa', [
+    $activeToken = $this->postJson('/api/auth/login/2fa', [
         'temp_token' => $secondTempToken,
         'otp'        => app(Google2FA::class)->getCurrentOtp($secret),
     ])
         ->assertOk()
         ->json('token');
 
-    expect($secondToken)->not->toBe($firstToken);
+    $this->postJson('/api/auth/login/2fa', [
+        'temp_token' => $firstTempToken,
+        'otp'        => app(Google2FA::class)->getCurrentOtp($secret),
+    ])
+        ->assertStatus(409)
+        ->assertJsonPath('session_active', true)
+        ->assertJsonPath('user.email', $user->email)
+        ->assertJsonPath('message', 'Ya existe una sesión activa para este usuario.');
+
     expect($user->fresh()->tokens()->count())->toBe(1);
-    expect(PersonalAccessToken::findToken($firstToken))->toBeNull();
-    expect(PersonalAccessToken::findToken($secondToken))->not->toBeNull();
+    expect(PersonalAccessToken::findToken($activeToken))->not->toBeNull();
 
-    $this->withToken($firstToken)
-        ->getJson('/api/auth/me')
-        ->assertUnauthorized();
-
-    $this->withToken($secondToken)
+    $this->withToken($activeToken)
         ->getJson('/api/auth/me')
         ->assertOk()
         ->assertJsonPath('email', $user->email);

@@ -9,6 +9,7 @@ use App\Helpers\TwoFactorPendingStore;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -146,6 +147,10 @@ class AuthService
 
         $this->syncEnterpriseOrganization($user);
 
+        if ($activeSession = $this->resolveActiveSession($user)) {
+            return $activeSession;
+        }
+
         if ($user->two_factor_enabled) {
             return [
                 'requires_2fa' => true,
@@ -172,6 +177,12 @@ class AuthService
         }
 
         $user = User::findOrFail($userId);
+
+        if ($activeSession = $this->resolveActiveSession($user)) {
+            TwoFactorPendingStore::forget($tempToken);
+
+            return $activeSession;
+        }
 
         if (! $this->google2fa->verifyKey($user->two_factor_secret, $otp)) {
             throw ValidationException::withMessages([
@@ -220,6 +231,39 @@ class AuthService
         $expiresAt = now()->addMinutes(max(1, (int) config('sanctum.expiration', 5)));
 
         return $user->createToken('api', ['*'], $expiresAt)->plainTextToken;
+    }
+
+    private function resolveActiveSession(User $user): ?array
+    {
+        $activeToken = $this->findActiveToken($user);
+
+        if (! $activeToken) {
+            return null;
+        }
+
+        return [
+            'session_active'    => true,
+            'user'              => $user->load('organization'),
+            'session_expires_at' => $activeToken->expires_at,
+        ];
+    }
+
+    private function findActiveToken(User $user): ?PersonalAccessToken
+    {
+        $query = $user->tokens()
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
+            ->latest('created_at');
+
+        $expiration = config('sanctum.expiration');
+
+        if ($expiration !== null) {
+            $query->where('created_at', '>', now()->subMinutes(max(1, (int) $expiration)));
+        }
+
+        return $query->first();
     }
 
     private function syncEnterpriseOrganization(User $user): void

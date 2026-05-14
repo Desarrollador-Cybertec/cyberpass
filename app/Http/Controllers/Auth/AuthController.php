@@ -45,6 +45,10 @@ class AuthController extends Controller
             throw $e;
         }
 
+        if ($result['session_active'] ?? false) {
+            return $this->activeSessionResponse($result);
+        }
+
         if ($result['requires_2fa'] ?? false) {
             return response()->json([
                 'requires_2fa' => true,
@@ -72,6 +76,10 @@ class AuthController extends Controller
             throw $e;
         }
 
+        if ($result['session_active'] ?? false) {
+            return $this->activeSessionResponse($result);
+        }
+
         $this->audit->log($result['user'], '2fa_verified');
         $this->audit->log($result['user'], 'login');
 
@@ -88,6 +96,18 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Sesión cerrada.'])
             ->withoutCookie('access_token');
+    }
+
+    private function activeSessionResponse(array $result): JsonResponse
+    {
+        $this->audit->log($result['user'], 'login_blocked_active_session');
+
+        return response()->json([
+            'message'            => 'Ya existe una sesión activa para este usuario.',
+            'session_active'     => true,
+            'user'               => new UserResource($result['user']),
+            'session_expires_at' => $result['session_expires_at'],
+        ], 409);
     }
 
     private function makeTokenCookie(string $token): \Symfony\Component\HttpFoundation\Cookie
