@@ -25,9 +25,10 @@ class AuthController extends Controller
         $result = $this->auth->register($request->validated());
 
         return response()->json([
-            'user'  => new UserResource($result['user']),
-            'token' => $result['token'],
-        ], 201)->cookie($this->makeTokenCookie($result['token']));
+            'requires_2fa_setup' => true,
+            'registration_token' => $result['registration_token'],
+            'user'               => $result['pending_user'],
+        ], 202)->cookie($this->makeRegistrationCookie($result['registration_token']));
     }
 
     public function login(LoginRequest $request): JsonResponse
@@ -101,6 +102,21 @@ class AuthController extends Controller
             true,         // httpOnly
             false,
             'Strict'      // sameSite
+        );
+    }
+
+    private function makeRegistrationCookie(string $token): \Symfony\Component\HttpFoundation\Cookie
+    {
+        return cookie(
+            'registration_token',
+            $token,
+            10,
+            '/',
+            null,
+            true,
+            true,
+            false,
+            'Strict'
         );
     }
 

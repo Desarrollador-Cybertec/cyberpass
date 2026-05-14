@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Helpers\OrganizationResolver;
+use App\Helpers\PendingRegistrationStore;
 use App\Helpers\PublicEmailDetector;
 use App\Helpers\TwoFactorPendingStore;
 use App\Models\User;
@@ -14,24 +15,116 @@ use PragmaRX\Google2FA\Google2FA;
 class AuthService
 {
     public function __construct(private Google2FA $google2fa) {}
+
     public function register(array $data): array
     {
-        $email        = $data['email'];
-        $isCorporate  = PublicEmailDetector::isCorporate($email);
-        $organization = $isCorporate ? OrganizationResolver::fromEmail($email) : null;
+        $email = $data['email'];
+        ['organization' => $organization, 'is_corporate' => $isCorporate] = $this->resolveRegistrationContext($email);
 
-        $user = User::create([
+        $registrationToken = PendingRegistrationStore::store([
             'name'            => $data['name'],
             'email'           => $email,
             'password'        => Hash::make($data['password']),
-            'account_type'    => $organization ? 'enterprise' : ($isCorporate ? 'enterprise' : 'personal'),
+            'account_type'    => $isCorporate ? 'enterprise' : 'personal',
             'role'            => $isCorporate ? 'org_user' : 'user',
             'organization_id' => $organization?->id,
+            'two_factor_secret' => null,
         ]);
+
+        return [
+            'registration_token' => $registrationToken,
+            'pending_user'       => $this->pendingRegistrationProfile([
+                'name'            => $data['name'],
+                'email'           => $email,
+                'account_type'    => $isCorporate ? 'enterprise' : 'personal',
+                'role'            => $isCorporate ? 'org_user' : 'user',
+                'organization_id' => $organization?->id,
+            ]),
+        ];
+    }
+
+    public function getPendingRegistration(string $registrationToken): array
+    {
+        $pendingRegistration = PendingRegistrationStore::retrieve($registrationToken);
+
+        if (! is_array($pendingRegistration)) {
+            throw ValidationException::withMessages([
+                'registration_token' => ['Registro pendiente inválido o expirado.'],
+            ]);
+        }
+
+        return $pendingRegistration;
+    }
+
+    public function rememberPendingRegistrationSecret(string $registrationToken, string $secret): array
+    {
+        $pendingRegistration = $this->getPendingRegistration($registrationToken);
+
+        PendingRegistrationStore::update($registrationToken, [
+            'two_factor_secret' => $secret,
+        ]);
+
+        return array_merge($pendingRegistration, [
+            'two_factor_secret' => $secret,
+        ]);
+    }
+
+    public function completePendingRegistration(string $registrationToken): array
+    {
+        $pendingRegistration = $this->getPendingRegistration($registrationToken);
+
+        if (empty($pendingRegistration['two_factor_secret'])) {
+            throw ValidationException::withMessages([
+                'registration_token' => ['Debes completar el setup de 2FA antes de activar la cuenta.'],
+            ]);
+        }
+
+        if (User::where('email', $pendingRegistration['email'])->exists()) {
+            PendingRegistrationStore::forget($registrationToken);
+
+            throw ValidationException::withMessages([
+                'email' => ['Ya existe una cuenta registrada con este correo.'],
+            ]);
+        }
+
+        $user = new User;
+        $user->forceFill([
+            'name'                    => $pendingRegistration['name'],
+            'email'                   => $pendingRegistration['email'],
+            'password'                => $pendingRegistration['password'],
+            'account_type'            => $pendingRegistration['account_type'],
+            'role'                    => $pendingRegistration['role'],
+            'organization_id'         => $pendingRegistration['organization_id'],
+            'two_factor_secret'       => $pendingRegistration['two_factor_secret'],
+            'two_factor_enabled'      => true,
+            'two_factor_confirmed_at' => now(),
+            'last_login_at'           => now(),
+        ])->save();
+
+        PendingRegistrationStore::forget($registrationToken);
 
         return [
             'user'  => $user->load('organization'),
             'token' => $user->createToken('api')->plainTextToken,
+        ];
+    }
+
+    public function pendingRegistrationProfile(array $pendingRegistration): array
+    {
+        $organization = null;
+
+        if (! empty($pendingRegistration['organization_id'])) {
+            $organization = [
+                'id' => $pendingRegistration['organization_id'],
+            ];
+        }
+
+        return [
+            'name'         => $pendingRegistration['name'],
+            'email'        => $pendingRegistration['email'],
+            'role'         => $pendingRegistration['role'],
+            'account_type' => $pendingRegistration['account_type'],
+            'organization' => $organization,
         ];
     }
 
@@ -139,5 +232,15 @@ class AuthService
             ]);
             $user->refresh();
         }
+    }
+
+    private function resolveRegistrationContext(string $email): array
+    {
+        $isCorporate = PublicEmailDetector::isCorporate($email);
+
+        return [
+            'is_corporate' => $isCorporate,
+            'organization' => $isCorporate ? OrganizationResolver::fromEmail($email) : null,
+        ];
     }
 }

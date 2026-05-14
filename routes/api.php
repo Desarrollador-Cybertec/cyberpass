@@ -35,6 +35,8 @@ Route::prefix('auth')->group(function () {
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:10,1');
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:6,1');
     Route::post('login/2fa', [AuthController::class, 'verify2fa'])->middleware('throttle:3,1');
+    Route::post('2fa/setup', [TwoFactorController::class, 'setup'])->middleware('throttle:10,1');
+    Route::post('2fa/enable', [TwoFactorController::class, 'enable'])->middleware('throttle:5,1');
     Route::post('invitations/accept', [InvitationController::class, 'accept'])->middleware('throttle:10,1');
     Route::post('forgot-password', [PasswordResetController::class, 'forgot'])->middleware('throttle:5,1');
     Route::get('verify-reset-token', [PasswordResetController::class, 'verify'])->middleware('throttle:10,1');
@@ -64,8 +66,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('me', [AuthController::class, 'me']);
 
         Route::prefix('2fa')->group(function () {
-            Route::post('setup', [TwoFactorController::class, 'setup']);
-            Route::post('enable', [TwoFactorController::class, 'enable']);
             Route::post('disable', [TwoFactorController::class, 'disable']);
         });
     });
