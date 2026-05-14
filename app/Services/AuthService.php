@@ -217,7 +217,9 @@ class AuthService
     {
         $user->tokens()->delete();
 
-        return $user->createToken('api')->plainTextToken;
+        $expiresAt = now()->addMinutes(max(1, (int) config('sanctum.expiration', 5)));
+
+        return $user->createToken('api', ['*'], $expiresAt)->plainTextToken;
     }
 
     private function syncEnterpriseOrganization(User $user): void

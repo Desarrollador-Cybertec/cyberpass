@@ -92,10 +92,12 @@ class AuthController extends Controller
 
     private function makeTokenCookie(string $token): \Symfony\Component\HttpFoundation\Cookie
     {
+        $minutes = max(1, (int) config('sanctum.expiration', 5));
+
         return cookie(
             'access_token',
             $token,
-            60 * 24 * 7,  // 7 días
+            $minutes,
             '/',
             null,
             true,         // secure

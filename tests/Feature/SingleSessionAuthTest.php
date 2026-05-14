@@ -3,6 +3,7 @@
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\PersonalAccessToken;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -108,4 +109,42 @@ it('keeps only the latest token after completing 2fa login again', function () {
         ->getJson('/api/auth/me')
         ->assertOk()
         ->assertJsonPath('email', $user->email);
+});
+
+it('expires auth tokens five minutes after issuance', function () {
+    Carbon::setTestNow(Carbon::parse('2026-05-14 10:00:00'));
+
+    try {
+        $user = User::factory()->create([
+            'email'    => 'token-expiration@gmail.com',
+            'password' => 'super-secret-123',
+        ]);
+
+        $user->forceFill([
+            'role'         => 'user',
+            'account_type' => 'personal',
+        ])->save();
+
+        $issuedAt = now()->copy();
+
+        $token = $this->postJson('/api/auth/login', [
+            'email'    => $user->email,
+            'password' => 'super-secret-123',
+        ])
+            ->assertOk()
+            ->json('token');
+
+        $storedToken = PersonalAccessToken::findToken($token);
+
+        expect($storedToken)->not->toBeNull();
+        expect($storedToken->expires_at?->equalTo($issuedAt->copy()->addMinutes(5)))->toBeTrue();
+
+        Carbon::setTestNow($issuedAt->copy()->addMinutes(6));
+
+        $this->withToken($token)
+            ->getJson('/api/auth/me')
+            ->assertUnauthorized();
+    } finally {
+        Carbon::setTestNow();
+    }
 });
