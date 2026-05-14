@@ -23,8 +23,10 @@ function createCredentialFixture(): array
 
     $user = User::factory()->create([
         'organization_id' => $organization->id,
-        'role' => 'org_user',
-        'account_type' => 'enterprise',
+        'role'                    => 'org_user',
+        'account_type'            => 'enterprise',
+        'two_factor_enabled'      => true,
+        'two_factor_confirmed_at' => now(),
     ]);
 
     $category = Category::create([

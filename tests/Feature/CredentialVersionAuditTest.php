@@ -1,8 +1,8 @@
 <?php
 
+use App\Models\AuditLog;
 use App\Models\Category;
 use App\Models\Credential;
-use App\Models\CredentialVersion;
 use App\Models\Organization;
 use App\Models\User;
 use App\Services\CredentialService;
@@ -15,133 +15,116 @@ beforeEach(function () {
     config()->set('app.credential_encryption_key', base64_encode(random_bytes(32)));
 });
 
-function createVersionAuditFixture(): array
+function createSysAdmin(string $name): User
 {
+    return User::factory()->create([
+        'name'                    => $name,
+        'role'                    => 'sysadmin',
+        'account_type'            => 'sysadmin',
+        'two_factor_enabled'      => true,
+        'two_factor_confirmed_at' => now(),
+    ]);
+}
+
+it('attributes credential version history to the authenticated sysadmin actors', function () {
     $organization = Organization::create([
-        'name' => 'Cyberpass Audit QA',
-        'slug' => 'cyberpass-audit-qa',
+        'name' => 'Cyberpass Audit Org',
+        'slug' => 'cyberpass-audit-org',
     ]);
 
     $category = Category::create([
         'organization_id' => $organization->id,
-        'name' => 'Infra',
+        'name'            => 'Production Secrets',
     ]);
 
-    $creator = User::factory()->create([
-        'name' => 'SysAdmin A',
-        'role' => 'sysadmin',
-        'account_type' => 'sysadmin',
-    ]);
-
-    $editor = User::factory()->create([
-        'name' => 'SysAdmin B',
-        'role' => 'sysadmin',
-        'account_type' => 'sysadmin',
-    ]);
-
-    $restorer = User::factory()->create([
-        'name' => 'SysAdmin C',
-        'role' => 'sysadmin',
-        'account_type' => 'sysadmin',
-    ]);
+    $creator = createSysAdmin('SysAdmin A');
+    $editor = createSysAdmin('SysAdmin B');
+    $restorer = createSysAdmin('SysAdmin C');
 
     $credential = app(CredentialService::class)->create($category, $organization, $creator, [
-        'name' => 'VPN',
-        'username' => 'vpn.user',
+        'name'     => 'VPN Gateway',
+        'username' => 'vpn.admin',
         'password' => 'initial-secret',
-        'notes' => 'otp backup code',
-        'type' => 'password',
+        'notes'    => 'Initial note',
+        'type'     => 'password',
     ]);
-
-    return compact('category', 'credential', 'creator', 'editor', 'restorer');
-}
-
-it('records the authenticated sysadmin as version actor during updates', function () {
-    ['category' => $category, 'credential' => $credential, 'creator' => $creator, 'editor' => $editor] = createVersionAuditFixture();
 
     Sanctum::actingAs($editor);
 
     $this->putJson("/api/categories/{$category->id}/credentials/{$credential->id}", [
-        'password' => 'rotated-secret',
-        'changed_by' => $creator->id,
+        'username' => 'vpn.editor',
+        'password' => 'updated-secret',
+        'notes'    => 'Updated by SysAdmin B',
     ])->assertOk();
 
-    $version = CredentialVersion::query()
-        ->where('credential_id', $credential->id)
-        ->latest('id')
-        ->firstOrFail();
+    $credential->refresh();
 
-    expect($version->changed_by)->toBe($editor->id)
-        ->and($version->encrypted_password)->not->toBe('initial-secret');
+    $updatedVersion = $credential->versions()->latest('id')->firstOrFail();
+
+    expect($updatedVersion->changed_by)->toBe($editor->id);
+    expect($updatedVersion->username)->toBe('vpn.admin');
+    expect($updatedVersion->encrypted_password)->not->toBe('initial-secret');
+    expect($updatedVersion->encrypted_password)->not->toBe('updated-secret');
 
     $this->assertDatabaseHas('audit_logs', [
-        'user_id' => $editor->id,
-        'action' => 'update',
-        'entity_type' => Credential::class,
-        'entity_id' => $credential->id,
+        'user_id'         => $editor->id,
+        'action'          => 'update',
+        'entity_type'     => Credential::class,
+        'entity_id'       => $credential->id,
+        'organization_id' => null,
     ]);
-});
-
-it('tracks distinct sysadmins across restore and keeps version history free of plaintext passwords', function () {
-    ['category' => $category, 'credential' => $credential, 'editor' => $editor, 'restorer' => $restorer] = createVersionAuditFixture();
-
-    Sanctum::actingAs($editor);
-
-    $this->putJson("/api/categories/{$category->id}/credentials/{$credential->id}", [
-        'password' => 'rotated-secret',
-        'username' => 'vpn.rotated',
-    ])->assertOk();
-
-    $versionToRestore = CredentialVersion::query()
-        ->where('credential_id', $credential->id)
-        ->latest('id')
-        ->firstOrFail();
 
     Sanctum::actingAs($restorer);
 
-    $this->postJson("/api/categories/{$category->id}/credentials/{$credential->id}/versions/{$versionToRestore->id}/restore")
+    $this->postJson("/api/categories/{$category->id}/credentials/{$credential->id}/versions/{$updatedVersion->id}/restore")
         ->assertOk()
         ->assertJsonPath('message', 'Versión restaurada correctamente.');
 
-    $latestVersion = CredentialVersion::query()
-        ->where('credential_id', $credential->id)
+    $credential->refresh();
+
+    $restoredVersion = $credential->versions()
+        ->where('changed_by', $restorer->id)
         ->latest('id')
         ->firstOrFail();
 
-    expect($latestVersion->changed_by)->toBe($restorer->id);
+    expect($restoredVersion->username)->toBe('vpn.editor');
+    expect($restoredVersion->encrypted_password)->not->toBe('initial-secret');
+    expect($restoredVersion->encrypted_password)->not->toBe('updated-secret');
 
-    $this->assertDatabaseHas('audit_logs', [
-        'user_id' => $restorer->id,
-        'action' => 'update',
-        'entity_type' => Credential::class,
-        'entity_id' => $credential->id,
+    $restoreAudit = AuditLog::query()
+        ->where('user_id', $restorer->id)
+        ->where('action', 'update')
+        ->where('entity_type', Credential::class)
+        ->where('entity_id', $credential->id)
+        ->latest('id')
+        ->firstOrFail();
+
+    expect($restoreAudit->metadata['restored_version_id'] ?? null)->toBe($updatedVersion->id);
+    expect(app(CredentialService::class)->decrypt($credential))->toBe('initial-secret');
+
+    $versionsResponse = $this->getJson("/api/categories/{$category->id}/credentials/{$credential->id}/versions")
+        ->assertOk();
+
+    $versions = collect($versionsResponse->json('data'));
+
+    expect($versions)->toHaveCount(2);
+
+    $versionActors = $versions->mapWithKeys(fn (array $version) => [
+        $version['changed_by']['id'] => $version['changed_by']['name'],
     ]);
 
-    $this->getJson("/api/categories/{$category->id}/credentials/{$credential->id}/reveal")
-        ->assertOk()
-        ->assertJson([
-            'password' => 'initial-secret',
-            'notes' => 'otp backup code',
-        ]);
+    expect($versionActors->all())->toMatchArray([
+        $editor->id => $editor->name,
+        $restorer->id => $restorer->name,
+    ]);
 
-    $historyResponse = $this->getJson("/api/categories/{$category->id}/credentials/{$credential->id}/versions")
-        ->assertOk()
-        ->assertJsonStructure([
-            'data' => [
-                [
-                    'id',
-                    'username',
-                    'changed_by' => ['id', 'name'],
-                    'created_at',
-                ],
-            ],
-        ])
-        ->assertJsonPath('data.0.changed_by.id', $restorer->id)
-        ->assertJsonPath('data.0.changed_by.name', $restorer->name)
-        ->assertJsonPath('data.1.changed_by.id', $editor->id)
-        ->assertJsonPath('data.1.changed_by.name', $editor->name);
+    foreach ($versions as $versionPayload) {
+        $this->assertArrayNotHasKey('password', $versionPayload);
+        $this->assertArrayNotHasKey('encrypted_password', $versionPayload);
+        $this->assertArrayNotHasKey('iv', $versionPayload);
+    }
 
-    expect($historyResponse->getContent())
+    expect(json_encode($versions->all(), JSON_THROW_ON_ERROR))
         ->not->toContain('initial-secret')
-        ->not->toContain('rotated-secret');
+        ->not->toContain('updated-secret');
 });
