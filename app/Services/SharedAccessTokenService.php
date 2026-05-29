@@ -35,12 +35,14 @@ class SharedAccessTokenService
 
     public function info(SharedAccessToken $token): array
     {
-        $credential = $token->credential;
+        $credential = $token->credential->load('image');
 
         return [
             'credential' => [
-                'name' => $credential->name,
-                'type' => $credential->type,
+                'name'     => $credential->name,
+                'type'     => $credential->type,
+                'image_id' => $credential->image_id,
+                'image'    => $this->mapImage($credential->image),
             ],
             'requires_pin' => $token->requiresPin(),
             'expires_at'   => $token->expires_at,
@@ -52,7 +54,7 @@ class SharedAccessTokenService
     {
         $token->increment('use_count');
 
-        $credential = $token->credential;
+        $credential = $token->credential->load('image');
 
         return [
             'credential' => [
@@ -60,6 +62,8 @@ class SharedAccessTokenService
                 'name'     => $credential->name,
                 'username' => $credential->username,
                 'type'     => $credential->type,
+                'image_id' => $credential->image_id,
+                'image'    => $this->mapImage($credential->image),
             ],
             'password' => $this->credentials->decrypt($credential),
             'url'      => $credential->url,
@@ -80,7 +84,7 @@ class SharedAccessTokenService
     {
         $token->increment('use_count');
 
-        $credential = $token->credential;
+        $credential = $token->credential->load('image');
 
         return [
             'credential' => [
@@ -88,6 +92,8 @@ class SharedAccessTokenService
                 'name'     => $credential->name,
                 'username' => $credential->username,
                 'type'     => $credential->type,
+                'image_id' => $credential->image_id,
+                'image'    => $this->mapImage($credential->image),
             ],
             'password' => $this->credentials->decrypt($credential),
             'url'      => $credential->url,
@@ -96,6 +102,20 @@ class SharedAccessTokenService
                 'use_count'  => $token->use_count,
                 'max_uses'   => $token->max_uses,
             ],
+        ];
+    }
+
+    private function mapImage(?\App\Models\Image $image): ?array
+    {
+        if (! $image) {
+            return null;
+        }
+
+        return [
+            'id'         => $image->id,
+            'name'       => $image->name,
+            'url'        => $image->url,
+            'created_at' => $image->created_at,
         ];
     }
 }
