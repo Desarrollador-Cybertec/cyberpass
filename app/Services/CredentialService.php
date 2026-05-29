@@ -17,13 +17,6 @@ class CredentialService
     {
         ['ciphertext' => $encPwd, 'iv' => $iv] = $this->encryption->encrypt($data['password']);
 
-        $encNotes = null;
-        $ivNotes  = null;
-
-        if (! empty($data['notes'])) {
-            ['ciphertext' => $encNotes, 'iv' => $ivNotes] = $this->encryption->encrypt($data['notes']);
-        }
-
         return Credential::create([
             'category_id'        => $category->id,
             'organization_id'    => $organization->id,
@@ -33,8 +26,7 @@ class CredentialService
             'username'           => $data['username'] ?? null,
             'encrypted_password' => $encPwd,
             'iv'                 => $iv,
-            'notes_encrypted'    => $encNotes,
-            'iv_notes'           => $ivNotes,
+            'url'                => $data['url'] ?? null,
             'type'               => $data['type'] ?? 'password',
         ]);
     }
@@ -42,13 +34,6 @@ class CredentialService
     public function createPersonal(Category $category, User $creator, array $data): Credential
     {
         ['ciphertext' => $encPwd, 'iv' => $iv] = $this->encryption->encrypt($data['password']);
-
-        $encNotes = null;
-        $ivNotes  = null;
-
-        if (! empty($data['notes'])) {
-            ['ciphertext' => $encNotes, 'iv' => $ivNotes] = $this->encryption->encrypt($data['notes']);
-        }
 
         return Credential::create([
             'category_id'        => $category->id,
@@ -59,8 +44,7 @@ class CredentialService
             'username'           => $data['username'] ?? null,
             'encrypted_password' => $encPwd,
             'iv'                 => $iv,
-            'notes_encrypted'    => $encNotes,
-            'iv_notes'           => $ivNotes,
+            'url'                => $data['url'] ?? null,
             'type'               => $data['type'] ?? 'password',
         ]);
     }
@@ -90,15 +74,8 @@ class CredentialService
             $updates['iv']                 = $iv;
         }
 
-        if (array_key_exists('notes', $data)) {
-            if ($data['notes']) {
-                ['ciphertext' => $encNotes, 'iv' => $ivNotes] = $this->encryption->encrypt($data['notes']);
-                $updates['notes_encrypted'] = $encNotes;
-                $updates['iv_notes']        = $ivNotes;
-            } else {
-                $updates['notes_encrypted'] = null;
-                $updates['iv_notes']        = null;
-            }
+        if (array_key_exists('url', $data)) {
+            $updates['url'] = $data['url'] ?: null;
         }
 
         $credential->update($updates);
@@ -114,15 +91,6 @@ class CredentialService
     public function decrypt(Credential $credential): string
     {
         return $this->encryption->decrypt($credential->encrypted_password, $credential->iv);
-    }
-
-    public function decryptNotes(Credential $credential): ?string
-    {
-        if (! $credential->notes_encrypted) {
-            return null;
-        }
-
-        return $this->encryption->decrypt($credential->notes_encrypted, $credential->iv_notes);
     }
 
     public function decryptVersion(CredentialVersion $version): string

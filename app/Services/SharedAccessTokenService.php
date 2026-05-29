@@ -62,7 +62,7 @@ class SharedAccessTokenService
                 'type'     => $credential->type,
             ],
             'password' => $this->credentials->decrypt($credential),
-            'notes'    => $this->credentials->decryptNotes($credential),
+            'url'      => $credential->url,
             'token'    => [
                 'expires_at' => $token->expires_at,
                 'use_count'  => $token->use_count,
@@ -90,7 +90,7 @@ class SharedAccessTokenService
                 'type'     => $credential->type,
             ],
             'password' => $this->credentials->decrypt($credential),
-            'notes'    => $this->credentials->decryptNotes($credential),
+            'url'      => $credential->url,
             'token'    => [
                 'expires_at' => $token->expires_at,
                 'use_count'  => $token->use_count,

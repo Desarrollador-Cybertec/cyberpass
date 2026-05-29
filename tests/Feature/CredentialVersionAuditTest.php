@@ -45,7 +45,7 @@ it('attributes credential version history to the authenticated sysadmin actors',
         'name'     => 'VPN Gateway',
         'username' => 'vpn.admin',
         'password' => 'initial-secret',
-        'notes'    => 'Initial note',
+        'url'      => 'https://vpn.example.com',
         'type'     => 'password',
     ]);
 
@@ -54,7 +54,7 @@ it('attributes credential version history to the authenticated sysadmin actors',
     $this->putJson("/api/categories/{$category->id}/credentials/{$credential->id}", [
         'username' => 'vpn.editor',
         'password' => 'updated-secret',
-        'notes'    => 'Updated by SysAdmin B',
+        'url'      => 'https://vpn-updated.example.com',
     ])->assertOk();
 
     $credential->refresh();

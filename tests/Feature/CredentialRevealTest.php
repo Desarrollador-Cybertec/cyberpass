@@ -35,11 +35,11 @@ function createCredentialFixture(): array
     ]);
 
     $credential = app(CredentialService::class)->create($category, $organization, $user, [
-        'name' => 'VPN',
+        'name'     => 'VPN',
         'username' => 'vpn.user',
         'password' => 'super-secret',
-        'notes' => 'otp backup code',
-        'type' => 'password',
+        'url'      => 'https://vpn.example.com',
+        'type'     => 'password',
     ]);
 
     return compact('category', 'credential', 'organization', 'user');
@@ -54,7 +54,7 @@ it('logs reveal_password when revealing a credential', function () {
         ->assertOk()
         ->assertJson([
             'password' => 'super-secret',
-            'notes' => 'otp backup code',
+            'url'      => 'https://vpn.example.com',
         ]);
 
     $this->assertDatabaseHas('audit_logs', [
@@ -81,7 +81,7 @@ it('logs reveal_password when showing a credential', function () {
     $this->getJson("/api/categories/{$category->id}/credentials/{$credential->id}")
         ->assertOk()
         ->assertJsonPath('data.password', 'super-secret')
-        ->assertJsonPath('data.notes', 'otp backup code');
+        ->assertJsonPath('data.url', 'https://vpn.example.com');
 
     $this->assertDatabaseHas('audit_logs', [
         'user_id' => $user->id,

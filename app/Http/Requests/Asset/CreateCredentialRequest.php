@@ -21,7 +21,7 @@ class CreateCredentialRequest extends FormRequest
             'name'     => ['required', 'string', 'max:255'],
             'username' => ['sometimes', 'nullable', 'string', 'max:255'],
             'password' => ['required', 'string', 'max:5000'],
-            'notes'    => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'url'      => ['sometimes', 'nullable', 'url', 'max:2048'],
             'type'     => ['sometimes', Rule::in(['password', 'api_key', 'ssh', 'certificate', 'other'])],
             'image_id' => ['sometimes', 'nullable', 'integer', 'exists:images,id'],
         ];

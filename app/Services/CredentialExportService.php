@@ -10,7 +10,7 @@ class CredentialExportService
 
     public function toCsv(Organization $organization): \Generator
     {
-        $headers = ['id', 'name', 'username', 'password', 'type', 'category', 'division', 'notes'];
+        $headers = ['id', 'name', 'username', 'password', 'type', 'category', 'division', 'url'];
 
         yield implode(',', $headers) . "\n";
 
@@ -26,7 +26,7 @@ class CredentialExportService
                     $credential->type,
                     $this->escapeCsv($credential->category->name ?? ''),
                     $this->escapeCsv($credential->category->division->name ?? ''),
-                    $this->escapeCsv($this->credentials->decryptNotes($credential) ?? ''),
+                    $this->escapeCsv($credential->url ?? ''),
                 ];
 
                 yield implode(',', $row) . "\n";

@@ -21,7 +21,7 @@ class CredentialResource extends JsonResource
                 'url'  => $this->whenLoaded('image', fn () => $this->image->url),
             ]),
             'password'    => $this->when($this->resource->password_plain !== null, $this->resource->password_plain),
-            'notes'       => $this->when($this->resource->notes_plain !== null, $this->resource->notes_plain),
+            'url'         => $this->url,
             'created_at'  => $this->created_at,
         ];
     }

@@ -78,7 +78,7 @@ class CredentialController extends Controller
 
         return response()->json([
             'password' => $this->service->decrypt($credential),
-            'notes'    => $this->service->decryptNotes($credential),
+            'url'      => $credential->url,
         ]);
     }
 

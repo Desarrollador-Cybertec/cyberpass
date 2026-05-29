@@ -21,21 +21,17 @@ class Credential extends Model
         'username',
         'encrypted_password',
         'iv',
-        'notes_encrypted',
-        'iv_notes',
+        'url',
         'type',
     ];
 
     protected $hidden = [
         'encrypted_password',
         'iv',
-        'notes_encrypted',
-        'iv_notes',
     ];
 
     // Populated by CredentialService::decrypt() before passing to the resource
     public ?string $password_plain = null;
-    public ?string $notes_plain    = null;
 
     public function category(): BelongsTo
     {

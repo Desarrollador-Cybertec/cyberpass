@@ -43,7 +43,7 @@ class VaultCredentialController extends Controller
             'name'     => ['required', 'string', 'max:255'],
             'username' => ['sometimes', 'nullable', 'string', 'max:255'],
             'password' => ['required', 'string', 'max:5000'],
-            'notes'    => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'url'      => ['sometimes', 'nullable', 'url', 'max:2048'],
             'type'     => ['sometimes', Rule::in(['password', 'api_key', 'ssh', 'certificate', 'other'])],
             'image_id' => ['sometimes', 'nullable', 'integer', 'exists:images,id'],
         ]);
@@ -74,7 +74,7 @@ class VaultCredentialController extends Controller
             'name'     => ['sometimes', 'required', 'string', 'max:255'],
             'username' => ['sometimes', 'nullable', 'string', 'max:255'],
             'password' => ['sometimes', 'string', 'max:5000'],
-            'notes'    => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'url'      => ['sometimes', 'nullable', 'url', 'max:2048'],
             'type'     => ['sometimes', Rule::in(['password', 'api_key', 'ssh', 'certificate', 'other'])],
             'image_id' => ['sometimes', 'nullable', 'integer', 'exists:images,id'],
         ]);
@@ -107,7 +107,7 @@ class VaultCredentialController extends Controller
 
         return response()->json([
             'password' => $this->service->decrypt($credential),
-            'notes'    => $this->service->decryptNotes($credential),
+            'url'      => $credential->url,
         ]);
     }
 }
