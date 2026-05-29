@@ -83,9 +83,12 @@ class AuthController extends Controller
         $this->audit->log($result['user'], '2fa_verified');
         $this->audit->log($result['user'], 'login');
 
+        $expiresAt = now()->addMinutes((int) config('sanctum.expiration', 20));
+
         return response()->json([
-            'user'  => new UserResource($result['user']),
-            'token' => $result['token'],
+            'user'             => new UserResource($result['user']),
+            'token'            => $result['token'],
+            'token_expires_at' => $expiresAt->toIso8601String(),
         ])->cookie($this->makeTokenCookie($result['token']));
     }
 
