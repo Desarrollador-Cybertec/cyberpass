@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\GoogleAuthController;
+use App\Http\Controllers\Auth\IntegrationTokenController;
 use App\Http\Controllers\Auth\InvitationController;
 use App\Http\Controllers\Auth\ActivityController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -96,6 +97,14 @@ Route::middleware([
             Route::post('change-password', [ProfileController::class, 'changePassword']);
             Route::delete('account', [ProfileController::class, 'deleteAccount']);
             Route::get('activity', [ActivityController::class, 'index']);
+
+            // Tokens de integración. Viven en el grupo humano (sesión + TOTP),
+            // así que un token de integración no puede emitir otros.
+            Route::get('integration-tokens', [IntegrationTokenController::class, 'index']);
+            Route::post('integration-tokens', [IntegrationTokenController::class, 'store'])
+                ->middleware('throttle:5,60');
+            Route::delete('integration-tokens', [IntegrationTokenController::class, 'destroyAll']);
+            Route::delete('integration-tokens/{token}', [IntegrationTokenController::class, 'destroy']);
         });
 
         /*
