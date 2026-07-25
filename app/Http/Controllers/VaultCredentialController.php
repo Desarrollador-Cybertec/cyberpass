@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SearchOperator;
 use App\Http\Resources\CredentialResource;
 use App\Models\Category;
 use App\Models\Credential;
@@ -24,9 +25,10 @@ class VaultCredentialController extends Controller
 
         $credentials = $category->credentials()
             ->when($request->query('q'), function ($q, $s) {
-                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $s);
+                $like = SearchOperator::like();
+                $term = SearchOperator::wrap($s);
 
-                return $q->where('name', 'ILIKE', "%{$escaped}%")->orWhere('username', 'ILIKE', "%{$escaped}%");
+                return $q->where('name', $like, $term)->orWhere('username', $like, $term);
             })
             ->when($request->query('type'), fn ($q, $t) => $q->where('type', $t))
             ->latest()

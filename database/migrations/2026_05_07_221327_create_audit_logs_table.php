@@ -15,11 +15,10 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('organization_id')->nullable()->constrained()->nullOnDelete();
-            $table->enum('action', [
-                'login', 'logout', 'reveal_password', 'copy_password',
-                'create', 'update', 'delete', 'export', 'assign', 'share',
-                '2fa_enabled', '2fa_disabled', '2fa_verified',
-            ]);
+            // string y no enum: el CHECK vigente de acciones lo pone
+            // 2026_05_13_233000 (solo Postgres). Un enum aqui dejaria una lista
+            // obsoleta imposible de reemplazar en sqlite.
+            $table->string('action');
             $table->string('entity_type')->nullable();
             $table->unsignedBigInteger('entity_id')->nullable();
             $table->string('ip_address', 45)->nullable();

@@ -21,6 +21,11 @@
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <!-- Fija la vida de los tokens de sesion para que la suite no dependa
+             del .env local (donde vale 20 y rompia SingleSessionAuthTest). -->
+        <env name="SANCTUM_TOKEN_EXPIRATION" value="5"/>
+        <!-- Llave de pruebas: 32 bytes en base64, lo que exige EncryptionService. -->
+        <env name="CREDENTIAL_ENCRYPTION_KEY" value="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="sqlite"/>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SearchOperator;
 use App\Http\Resources\CredentialResource;
 use App\Models\Credential;
 use App\Models\Organization;
@@ -22,9 +23,10 @@ class CredentialSearchController extends Controller
         $credentials = Credential::with('image')
             ->where('organization_id', $organization->id)
             ->when($request->query('q'), function ($q, $s) {
-                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $s);
+                $like = SearchOperator::like();
+                $term = SearchOperator::wrap($s);
 
-                return $q->where('name', 'ILIKE', "%{$escaped}%")->orWhere('username', 'ILIKE', "%{$escaped}%");
+                return $q->where('name', $like, $term)->orWhere('username', $like, $term);
             })
             ->when($request->query('category_id'), fn ($q, $id) => $q->where('category_id', $id))
             ->when($request->query('division_id'), fn ($q, $id) => $q->whereHas('category', fn ($c) => $c->where('division_id', $id)))

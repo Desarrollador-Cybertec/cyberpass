@@ -16,8 +16,11 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password')->nullable();
             $table->string('google_id')->nullable()->unique();
-            $table->enum('role', ['sysadmin', 'org_admin', 'org_user', 'user'])->default('org_user');
-            $table->enum('account_type', ['personal', 'enterprise', 'sysadmin'])->default('personal');
+            // string y no enum: enum() genera un CHECK con nombre automatico que
+            // queda obsoleto en cuanto se amplia la lista, y en sqlite no se puede
+            // reemplazar. El CHECK vigente lo pone 2026_05_12_222618 (solo Postgres).
+            $table->string('role')->default('org_user');
+            $table->string('account_type')->default('personal');
             $table->string('two_factor_secret')->nullable();
             $table->boolean('two_factor_enabled')->default(false);
             $table->timestamp('two_factor_confirmed_at')->nullable();

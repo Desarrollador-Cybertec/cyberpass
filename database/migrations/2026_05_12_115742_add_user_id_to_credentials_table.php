@@ -13,7 +13,16 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained('users')->cascadeOnDelete()->after('organization_id');
         });
 
-        DB::statement('ALTER TABLE credentials ALTER COLUMN organization_id DROP NOT NULL');
+        // Forma portable: en sqlite Laravel reconstruye la tabla.
+        Schema::table('credentials', function (Blueprint $table) {
+            $table->foreignId('organization_id')->nullable()->change();
+        });
+
+        // El CHECK es DDL solo de Postgres; en sqlite lo garantiza la capa de
+        // aplicacion (IntegrationScopeResolver + CredentialService).
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            return;
+        }
 
         DB::statement("
             ALTER TABLE credentials ADD CONSTRAINT credentials_scope_check
@@ -27,13 +36,17 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE credentials DROP CONSTRAINT IF EXISTS credentials_scope_check');
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE credentials DROP CONSTRAINT IF EXISTS credentials_scope_check');
+        }
 
         Schema::table('credentials', function (Blueprint $table) {
             $table->dropForeign(['user_id']);
             $table->dropColumn('user_id');
         });
 
-        DB::statement('ALTER TABLE credentials ALTER COLUMN organization_id SET NOT NULL');
+        Schema::table('credentials', function (Blueprint $table) {
+            $table->foreignId('organization_id')->nullable(false)->change();
+        });
     }
 };

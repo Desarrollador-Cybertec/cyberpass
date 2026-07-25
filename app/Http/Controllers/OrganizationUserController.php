@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\SearchOperator;
 use App\Http\Requests\Organization\InviteUserRequest;
 use App\Http\Requests\Organization\UpdateUserRoleRequest;
 use App\Http\Resources\OrganizationUserResource;
@@ -27,10 +28,11 @@ class OrganizationUserController extends Controller
             ->when($request->query('role'), fn ($q, $r) => $q->where('role', $r))
             ->when($request->query('is_active'), fn ($q, $v) => $q->where('is_active', filter_var($v, FILTER_VALIDATE_BOOLEAN)))
             ->when($request->query('q'), function ($q, $s) {
-                $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $s);
+                $like = SearchOperator::like();
+                $term = SearchOperator::wrap($s);
 
-                return $q->where(function ($sub) use ($escaped) {
-                    $sub->where('name', 'ILIKE', "%{$escaped}%")->orWhere('email', 'ILIKE', "%{$escaped}%");
+                return $q->where(function ($sub) use ($like, $term) {
+                    $sub->where('name', $like, $term)->orWhere('email', $like, $term);
                 });
             })
             ->latest()
