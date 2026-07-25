@@ -9,7 +9,7 @@ use App\Helpers\TwoFactorPendingStore;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Laravel\Sanctum\PersonalAccessToken;
+use App\Models\PersonalAccessToken;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -226,7 +226,9 @@ class AuthService
 
     private function issueSingleSessionToken(User $user): string
     {
-        $user->tokens()->delete();
+        // Solo los tokens de SESION. Sin el filtro, cada login destruiria los
+        // tokens de integracion del usuario y romperia Axis en cada entrada.
+        $user->tokens()->sessions()->delete();
 
         $expiresAt = now()->addMinutes(max(1, (int) config('sanctum.expiration', 5)));
 
@@ -270,7 +272,12 @@ class AuthService
 
     private function findActiveToken(User $user): ?PersonalAccessToken
     {
+        // Solo los tokens de SESION cuentan como "sesion activa". Sin este
+        // filtro, un token de integracion vivo haria que todo login posterior
+        // respondiera 409 session_active y el usuario no podria volver a entrar
+        // — ni siquiera para rotar ese token.
         $query = $user->tokens()
+            ->sessions()
             ->where(function ($query) {
                 $query->whereNull('expires_at')
                     ->orWhere('expires_at', '>', now());

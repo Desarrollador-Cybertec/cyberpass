@@ -72,9 +72,15 @@ class ProfileController extends Controller
 
         $user->update(['password' => Hash::make($data['password'])]);
 
-        // Revoke all other Sanctum tokens, keep the current one active
+        // Cierra las demas SESIONES, conservando la actual.
+        //
+        // A proposito no toca los tokens de integracion: son secretos
+        // independientes, no derivados de la contrasena, y estan guardados
+        // cifrados en la app que los consume. Revocarlos en cada cambio de
+        // contrasena romperia esa integracion sin ganar nada — para eso existe
+        // DELETE /api/auth/integration-tokens.
         $currentTokenId = $user->currentAccessToken()->id;
-        $user->tokens()->where('id', '!=', $currentTokenId)->delete();
+        $user->tokens()->sessions()->where('id', '!=', $currentTokenId)->delete();
 
         $this->audit->log($user, 'password_changed', User::class, $user->id);
 
