@@ -17,6 +17,9 @@ use App\Http\Controllers\CredentialSearchController;
 use App\Http\Controllers\CredentialVersionController;
 use App\Http\Controllers\DomainVerificationController;
 use App\Http\Controllers\ImageController;
+use App\Http\Controllers\Integration\IntegrationCategoryController;
+use App\Http\Controllers\Integration\IntegrationCredentialController;
+use App\Http\Controllers\Integration\IntegrationMeController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationDivisionController;
 use App\Http\Controllers\OrganizationDomainController;
@@ -52,7 +55,13 @@ Route::prefix('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsurePersonalAccessToken::class])->group(function () {
+Route::middleware([
+    'auth:sanctum',
+    \App\Http\Middleware\EnsurePersonalAccessToken::class,
+    // Sella todo lo de abajo frente a los tokens de integracion: solo pueden
+    // llegar a /api/integration/*. Ver EnsureSessionToken.
+    \App\Http\Middleware\EnsureSessionToken::class,
+])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
@@ -182,6 +191,52 @@ Route::middleware(['auth:sanctum', \App\Http\Middleware\EnsurePersonalAccessToke
     }); // EnsureTwoFactorSetup
 
 });
+
+/*
+|--------------------------------------------------------------------------
+| Integration API — consumida por apps externas (Axis) con token de integración
+|--------------------------------------------------------------------------
+|
+| EnsureTwoFactorSetup va aquí sin exención: solo lee el booleano
+| two_factor_enabled, que el humano ya tiene en true porque emitir el token
+| exige un OTP en vivo. Como efecto secundario se gana un interruptor de
+| emergencia — si desactiva su 2FA, la integración deja de funcionar.
+|
+| 'throttle:' tiene que ir DESPUÉS de 'auth:sanctum', o $request->user() es null
+| y los limitadores por token degradan a por-IP (una sola IP para todos).
+|
+*/
+Route::prefix('integration')
+    ->middleware([
+        'auth:sanctum',
+        \App\Http\Middleware\EnsurePersonalAccessToken::class,
+        \App\Http\Middleware\EnsureTwoFactorSetup::class,
+        'throttle:integration',
+    ])
+    ->group(function () {
+        Route::get('me', [IntegrationMeController::class, 'show'])
+            ->middleware('integration.ability:integration:me.read');
+
+        Route::get('categories', [IntegrationCategoryController::class, 'index'])
+            ->middleware('integration.ability:integration:categories.read');
+
+        Route::prefix('credentials')->group(function () {
+            Route::post('/', [IntegrationCredentialController::class, 'store'])
+                ->middleware(['integration.ability:integration:credentials.create', 'throttle:integration-write']);
+
+            Route::get('{credential}', [IntegrationCredentialController::class, 'show'])
+                ->middleware('integration.ability:integration:credentials.read');
+
+            Route::put('{credential}', [IntegrationCredentialController::class, 'update'])
+                ->middleware(['integration.ability:integration:credentials.update', 'throttle:integration-write']);
+
+            Route::get('{credential}/reveal', [IntegrationCredentialController::class, 'reveal'])
+                ->middleware(['integration.ability:integration:credentials.reveal', 'throttle:integration-reveal']);
+
+            Route::delete('{credential}', [IntegrationCredentialController::class, 'destroy'])
+                ->middleware(['integration.ability:integration:credentials.delete', 'throttle:integration-write']);
+        });
+    });
 
 /*
 |--------------------------------------------------------------------------

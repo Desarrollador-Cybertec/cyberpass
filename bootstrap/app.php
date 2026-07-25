@@ -14,6 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
+        // Primeros alias del proyecto: solo el de abilities los necesita, por
+        // llevar parametros. Los demas siguen referenciados por FQCN en las rutas.
+        $middleware->alias([
+            'integration.ability' => \App\Http\Middleware\EnsureIntegrationTokenAbility::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $e, \Illuminate\Http\Request $request) {

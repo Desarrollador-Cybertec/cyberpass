@@ -44,7 +44,58 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Emite un token de integracion REAL y devuelve su texto plano.
+ *
+ * Ojo: Sanctum::actingAs() NO sirve para probar tokens de integracion. Monta un
+ * mock de Mockery y ni siquiera pasa por el Guard, asi que isIntegration()
+ * devuelve falsy y el callback authenticateAccessTokensUsing() nunca corre: un
+ * test escrito con actingAs() pasaria sin afirmar nada. Hay que usar
+ * ->withToken($plain) con el valor que devuelve este helper.
+ *
+ * @param  list<string>|null  $abilities
+ */
+function integrationToken(
+    App\Models\User $user,
+    ?array $abilities = null,
+    ?DateTimeInterface $expiresAt = null,
+): string {
+    $new = $user->createToken(
+        'test integration',
+        $abilities ?? App\Helpers\IntegrationAbility::defaults(),
+        $expiresAt ?? now()->addYear(),
+    );
+
+    // createToken() no rellena 'type': no esta en el $fillable de Sanctum.
+    $new->accessToken->forceFill(['type' => App\Models\PersonalAccessToken::TYPE_INTEGRATION])->save();
+
+    return $new->plainTextToken;
+}
+
+/**
+ * Cambia el bearer entre peticiones DENTRO de un mismo test.
+ *
+ * Laravel conserva en el guard el usuario ya resuelto de una peticion a la
+ * siguiente del mismo test, asi que un ->withToken() posterior se ignora en
+ * silencio y la peticion sigue autenticada con el token anterior. Sin este
+ * forgetGuards(), un test que alterna token de sesion y de integracion afirma
+ * justo lo contrario de lo que cree estar afirmando.
+ */
+function withBearer(object $test, string $token): object
 {
-    // ..
+    // app() y no $test->app: esa propiedad es protected en el TestCase, y en un
+    // test el contenedor global ES la misma instancia de aplicacion.
+    app('auth')->forgetGuards();
+
+    return $test->withToken($token);
+}
+
+/** Un usuario listo para operar: 2FA activo, que es lo que exige la API. */
+function verifiedUser(array $attributes = []): App\Models\User
+{
+    return App\Models\User::factory()->create(array_merge([
+        'two_factor_enabled'      => true,
+        'two_factor_confirmed_at' => now(),
+        'two_factor_secret'       => app(PragmaRX\Google2FA\Google2FA::class)->generateSecretKey(),
+    ], $attributes));
 }
