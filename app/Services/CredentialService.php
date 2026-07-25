@@ -58,11 +58,22 @@ class CredentialService
             'iv'                 => $credential->iv,
         ]);
 
-        $updates = array_filter([
-            'name'     => $data['name'] ?? null,
-            'username' => array_key_exists('username', $data) ? $data['username'] : null,
-            'type'     => $data['type'] ?? null,
-        ], fn ($v) => $v !== null);
+        // Semantica de clave presente, no de valor no-nulo. Antes esto era un
+        // array_filter(..., fn ($v) => $v !== null), que volvia a descartar el
+        // username nulo que la linea de arriba se molestaba en conservar: no
+        // habia forma de limpiar un username, ni desde el SPA ni desde el API,
+        // aunque las reglas de validacion lo declaran nullable.
+        $updates = [];
+
+        foreach (['name', 'type'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] !== null) {
+                $updates[$field] = $data[$field];
+            }
+        }
+
+        if (array_key_exists('username', $data)) {
+            $updates['username'] = $data['username'];
+        }
 
         if (array_key_exists('image_id', $data)) {
             $updates['image_id'] = $data['image_id'];
