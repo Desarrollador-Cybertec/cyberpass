@@ -30,8 +30,10 @@ class Credential extends Model
         'iv',
     ];
 
-    // Populated by CredentialService::decrypt() before passing to the resource
-    public ?string $password_plain = null;
+    // Aqui vivia un `public ?string $password_plain` que CredentialResource
+    // serializaba cuando no era null. Nadie lo asignaba nunca, pero dejaba
+    // abierta la posibilidad de que un texto plano acabara en los listados
+    // paginados. El texto plano solo sale por los endpoints /reveal.
 
     public function category(): BelongsTo
     {

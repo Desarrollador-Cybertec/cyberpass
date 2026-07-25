@@ -20,7 +20,8 @@ class CredentialResource extends JsonResource
                 'name' => $this->whenLoaded('image', fn () => $this->image->name),
                 'url'  => $this->whenLoaded('image', fn () => $this->image->url),
             ]),
-            'password'    => $this->when($this->resource->password_plain !== null, $this->resource->password_plain),
+            // Sin clave 'password': este recurso nunca expone el texto plano.
+            // El secreto solo se devuelve por los endpoints /reveal.
             'url'         => $this->url,
             'created_at'  => $this->created_at,
         ];

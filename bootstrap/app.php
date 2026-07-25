@@ -25,6 +25,14 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null; // Laravel ya maneja este caso correctamente
             }
 
+            // AuthenticationException no implementa HttpExceptionInterface, asi
+            // que sin este caso caia en el 500 generico: un token expirado o
+            // revocado respondia "Error interno del servidor" en vez de 401, y
+            // ningun cliente podia distinguir "reautenticate" de "esta caido".
+            if ($e instanceof \Illuminate\Auth\AuthenticationException) {
+                return response()->json(['message' => 'No autorizado.'], 401);
+            }
+
             $status = $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface
                 ? $e->getStatusCode()
                 : 500;

@@ -73,21 +73,46 @@ it('logs reveal_password when revealing a credential', function () {
     ]);
 });
 
-it('logs reveal_password when showing a credential', function () {
+it('never returns the plaintext when showing a credential, and logs it as a view', function () {
     ['category' => $category, 'credential' => $credential, 'user' => $user] = createCredentialFixture();
 
     Sanctum::actingAs($user);
 
-    $this->getJson("/api/categories/{$category->id}/credentials/{$credential->id}")
+    $response = $this->getJson("/api/categories/{$category->id}/credentials/{$credential->id}")
         ->assertOk()
-        ->assertJsonPath('data.password', 'super-secret')
-        ->assertJsonPath('data.url', 'https://vpn.example.com');
+        ->assertJsonPath('url', 'https://vpn.example.com')
+        ->assertJsonMissingPath('password');
 
+    // El secreto no puede aparecer en NINGUNA parte del cuerpo, ni anidado.
+    expect($response->getContent())->not->toContain('super-secret');
+
+    // show() es una lectura de metadatos: se audita 'view', no 'reveal_password'.
     $this->assertDatabaseHas('audit_logs', [
         'user_id' => $user->id,
-        'organization_id' => $user->organization_id,
+        'action' => 'view',
+        'entity_type' => Credential::class,
+        'entity_id' => $credential->id,
+    ]);
+
+    $this->assertDatabaseMissing('audit_logs', [
+        'user_id' => $user->id,
         'action' => 'reveal_password',
         'entity_type' => Credential::class,
         'entity_id' => $credential->id,
     ]);
+});
+
+it('finds credentials by name with a case-insensitive search on any driver', function () {
+    ['category' => $category, 'user' => $user] = createCredentialFixture();
+
+    Sanctum::actingAs($user);
+
+    // Cubre SearchOperator: con ILIKE literal esto reventaba en sqlite.
+    $this->getJson("/api/categories/{$category->id}/credentials?q=vpn")
+        ->assertOk()
+        ->assertJsonPath('data.0.name', 'VPN');
+
+    $this->getJson("/api/categories/{$category->id}/credentials?q=nada-de-esto")
+        ->assertOk()
+        ->assertJsonCount(0, 'data');
 });
