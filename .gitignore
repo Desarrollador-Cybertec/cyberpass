@@ -28,3 +28,6 @@ Thumbs.db
 /.agents
 skills-lock.json
 /context
+.env.before_lerd
+*.sqlite*
+.php-version
