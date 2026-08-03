@@ -53,7 +53,8 @@ Reglas que sostienen esa separación:
 | `integration:me.read` | `GET /integration/me` |
 | `integration:categories.read` | `GET /integration/categories` |
 | `integration:credentials.create` | Crear credenciales |
-| `integration:credentials.read` | Ver metadatos de una credencial |
+| `integration:credentials.read` | Ver metadatos de una credencial (hay que saber su id) |
+| `integration:credentials.list` | Listar y buscar entre las credenciales propias |
 | `integration:credentials.update` | Editar una credencial |
 | `integration:credentials.reveal` | **Leer el secreto en claro** |
 | `integration:credentials.delete` | Borrar una credencial |
@@ -166,6 +167,23 @@ Bóveda personal y categorías de la organización **en una sola respuesta, sin 
 - La respuesta **nunca** incluye `password`.
 
 **201** → `IntegrationCredentialResource` con `{ id, name, username, url, type, category: { id, name, scope }, image_id, created_at, updated_at }`.
+
+### `GET /api/integration/credentials`
+
+Busca entre las credenciales del dueño del token, para poder ofrecer *"vincula una que ya existe"* en vez de crear un duplicado.
+
+Parámetros (todos opcionales): `q` (busca en `name`, `username` y `url`), `category_id`, `type`, `scope` (`personal` | `organization`), `page`, `per_page` (por defecto 25, tope 100).
+
+**200** → respuesta paginada de Laravel: `{ data: IntegrationCredentialResource[], links, meta }`.
+
+**Solo devuelve credenciales creadas por el dueño del token** — igual que `/reveal` y a diferencia de `GET /{credential}`. Dos motivos:
+
+1. Un listado **es** enumeración. Acotarlo con la política de la organización entregaría el índice de la bóveda entera (nombres, usuarios, URLs) a cualquiera con un token filtrado.
+2. Aunque se listaran las ajenas, el cliente no podría abrirlas: `/reveal` responde `404`. Ofrecer credenciales que luego fallan es peor que no ofrecerlas.
+
+Consecuencia a tener en cuenta: **no detecta duplicados creados por otra persona.** Si algún día se quiere deduplicación a nivel de equipo, hay que cambiar el `where('created_by', …)` del controlador *y* relajar `reveal()` en la misma medida, o la experiencia queda rota.
+
+No escribe en `audit_logs`: una búsqueda no es un acceso a una credencial concreta, y registrar cada pulsación del buscador ahogaría el log, donde lo que importa son las revelaciones.
 
 ### `GET /api/integration/credentials/{credential}`
 

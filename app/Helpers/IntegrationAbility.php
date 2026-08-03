@@ -20,6 +20,13 @@ final class IntegrationAbility
     /** Metadatos de una credencial, nunca el secreto. */
     public const CREDENTIALS_READ = 'integration:credentials.read';
 
+    /**
+     * Listar y buscar credenciales propias. Separada de READ a proposito: READ
+     * exige conocer el id de antemano, LIST permite enumerar. Son superficies
+     * distintas y un token debe poder tener una sin la otra.
+     */
+    public const CREDENTIALS_LIST = 'integration:credentials.list';
+
     public const CREDENTIALS_UPDATE = 'integration:credentials.update';
 
     /** Devuelve el secreto en claro. Se emite solo si se pide explicitamente. */
@@ -35,6 +42,7 @@ final class IntegrationAbility
             self::CATEGORIES_READ,
             self::CREDENTIALS_CREATE,
             self::CREDENTIALS_READ,
+            self::CREDENTIALS_LIST,
             self::CREDENTIALS_UPDATE,
             self::CREDENTIALS_REVEAL,
             self::CREDENTIALS_DELETE,
@@ -54,6 +62,7 @@ final class IntegrationAbility
             self::CATEGORIES_READ,
             self::CREDENTIALS_CREATE,
             self::CREDENTIALS_READ,
+            self::CREDENTIALS_LIST,
             self::CREDENTIALS_UPDATE,
             self::CREDENTIALS_REVEAL,
         ];

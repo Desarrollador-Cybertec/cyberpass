@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Integration;
 
 use App\Helpers\IntegrationAbility;
+use App\Helpers\SearchOperator;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Integration\StoreIntegrationCredentialRequest;
 use App\Http\Requests\Integration\UpdateIntegrationCredentialRequest;
@@ -29,6 +30,54 @@ class IntegrationCredentialController extends Controller
         private IntegrationScopeResolver $scopes,
         private AuditService $audit,
     ) {}
+
+    /**
+     * Buscar entre las credenciales del dueño del token, para que un cliente
+     * pueda ofrecer "vincular una que ya existe" en vez de crear un duplicado.
+     *
+     * Acotado a `created_by = usuario del token`, igual que /reveal y a
+     * diferencia de show(). Dos razones, y la segunda es la de peso:
+     *
+     *  1. Un listado ES enumeración. Con la política de la organización esto
+     *     entregaría el índice de la bóveda entera (nombres, usuarios, URLs) a
+     *     cualquiera con un token filtrado — justo lo que el comentario de
+     *     reveal() dice que no se quiere.
+     *  2. Aunque se listaran, el cliente no podría revelarlas: /reveal las
+     *     rechaza con 404. Ofrecer credenciales que luego fallan al abrirse es
+     *     peor que no ofrecerlas.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $credentials = Credential::query()
+            ->with('category')
+            ->where('created_by', $user->id)
+            ->when($request->query('q'), function ($query, string $term) {
+                $like = SearchOperator::like();
+                $wrapped = SearchOperator::wrap($term);
+
+                // Agrupado: sin el closure, el orWhere se saldría del filtro
+                // por created_by y devolvería credenciales ajenas.
+                return $query->where(fn ($q) => $q->where('name', $like, $wrapped)
+                    ->orWhere('username', $like, $wrapped)
+                    ->orWhere('url', $like, $wrapped));
+            })
+            ->when($request->query('category_id'), fn ($q, $id) => $q->where('category_id', $id))
+            ->when($request->query('type'), fn ($q, $t) => $q->where('type', $t))
+            ->when($request->query('scope'), fn ($q, $s) => $s === IntegrationScopeResolver::SCOPE_PERSONAL
+                ? $q->whereNotNull('user_id')
+                : $q->whereNull('user_id'))
+            ->orderBy('name')
+            ->paginate(min(100, max(1, (int) $request->query('per_page', 25))));
+
+        // Sin audit->log(): una búsqueda no es un acceso a una credencial
+        // concreta y registrar cada pulsación del buscador ahogaría el log de
+        // auditoría, donde lo que importa son las revelaciones.
+        return response()->json(
+            IntegrationCredentialResource::collection($credentials)->response()->getData(true)
+        );
+    }
 
     public function store(StoreIntegrationCredentialRequest $request): JsonResponse
     {

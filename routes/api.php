@@ -230,6 +230,10 @@ Route::prefix('integration')
             ->middleware('integration.ability:integration:categories.read');
 
         Route::prefix('credentials')->group(function () {
+            // Antes que {credential}: si no, el comodin se traga la ruta vacia.
+            Route::get('/', [IntegrationCredentialController::class, 'index'])
+                ->middleware('integration.ability:integration:credentials.list');
+
             Route::post('/', [IntegrationCredentialController::class, 'store'])
                 ->middleware(['integration.ability:integration:credentials.create', 'throttle:integration-write']);
 
