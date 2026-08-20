@@ -19,6 +19,8 @@ class Credential extends Model
         'image_id',
         'name',
         'username',
+        'email',
+        'nextcloud_account',
         'encrypted_password',
         'iv',
         'url',

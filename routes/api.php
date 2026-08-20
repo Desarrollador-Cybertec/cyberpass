@@ -12,6 +12,7 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CredentialController;
 use App\Http\Controllers\CredentialExportController;
+use App\Http\Controllers\CredentialImportController;
 use App\Http\Controllers\VaultCategoryController;
 use App\Http\Controllers\VaultCredentialController;
 use App\Http\Controllers\CredentialSearchController;
@@ -149,6 +150,11 @@ Route::middleware([
         Route::prefix('categories/{category}')->group(function () {
             Route::apiResource('credentials', CredentialController::class);
             Route::get('credentials/{credential}/reveal', [CredentialController::class, 'reveal']);
+
+            Route::post('credentials/import/preview', [CredentialImportController::class, 'preview'])
+                ->middleware('throttle:10,60');
+            Route::post('credentials/import/commit', [CredentialImportController::class, 'commit'])
+                ->middleware('throttle:5,60');
 
             Route::prefix('credentials/{credential}/versions')->group(function () {
                 Route::get('/', [CredentialVersionController::class, 'index']);

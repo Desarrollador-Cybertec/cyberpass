@@ -9,6 +9,7 @@ use App\Models\Division;
 use App\Models\Organization;
 use App\Services\AuditService;
 use App\Services\OrganizationService;
+use App\Services\ReplicationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,6 +18,7 @@ class OrganizationDivisionController extends Controller
     public function __construct(
         private OrganizationService $service,
         private AuditService $audit,
+        private ReplicationService $replication,
     ) {}
 
     public function index(Request $request, Organization $organization): JsonResponse
@@ -30,13 +32,28 @@ class OrganizationDivisionController extends Controller
 
     public function store(CreateDivisionRequest $request, Organization $organization): JsonResponse
     {
-        $division = $this->service->createDivision($organization, $request->validated());
+        $data = $request->safe()->except('replicate_to_other_organizations');
+
+        $division = $this->service->createDivision($organization, $data);
 
         $this->audit->log($request->user(), 'create', Division::class, $division->id, [
             'organization_id' => $organization->id,
         ]);
 
-        return response()->json(new DivisionResource($division), 201);
+        $replication = null;
+
+        if ($request->boolean('replicate_to_other_organizations') && $request->user()->can('replicateDivisions', Organization::class)) {
+            $replication = $this->replication->replicateDivision($division);
+
+            $this->audit->log($request->user(), 'replicate', Division::class, $division->id, [
+                'results' => $replication,
+            ]);
+        }
+
+        return response()->json([
+            'division'    => new DivisionResource($division),
+            'replication' => $replication ?: null,
+        ], 201);
     }
 
     public function show(Request $request, Organization $organization, Division $division): JsonResponse

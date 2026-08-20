@@ -55,4 +55,9 @@ class OrganizationPolicy
         return $user->isSysAdmin()
             || ($user->isOrgAdmin() && $user->organization_id === $organization->id);
     }
+
+    public function replicateDivisions(User $user): bool
+    {
+        return $user->isSysAdmin();
+    }
 }

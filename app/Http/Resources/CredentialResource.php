@@ -10,20 +10,22 @@ class CredentialResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'          => $this->id,
-            'name'        => $this->name,
-            'username'    => $this->username,
-            'type'        => $this->type,
-            'category_id' => $this->category_id,
-            'image'       => $this->when($this->image_id !== null, [
+            'id'                => $this->id,
+            'name'              => $this->name,
+            'username'          => $this->username,
+            'email'             => $this->email,
+            'nextcloud_account' => $this->nextcloud_account,
+            'type'              => $this->type,
+            'category_id'       => $this->category_id,
+            'image'             => $this->when($this->image_id !== null, [
                 'id'   => $this->image_id,
                 'name' => $this->whenLoaded('image', fn () => $this->image->name),
                 'url'  => $this->whenLoaded('image', fn () => $this->image->url),
             ]),
             // Sin clave 'password': este recurso nunca expone el texto plano.
             // El secreto solo se devuelve por los endpoints /reveal.
-            'url'         => $this->url,
-            'created_at'  => $this->created_at,
+            'url'               => $this->url,
+            'created_at'        => $this->created_at,
         ];
     }
 }

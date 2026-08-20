@@ -18,6 +18,7 @@ class CreateDivisionRequest extends FormRequest
             'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'is_active'   => ['sometimes', 'boolean'],
             'image_id'    => ['sometimes', 'nullable', 'integer', 'exists:images,id'],
+            'replicate_to_other_organizations' => ['sometimes', 'boolean'],
         ];
     }
 }

@@ -24,6 +24,8 @@ class CredentialService
             'image_id'           => $data['image_id'] ?? null,
             'name'               => $data['name'],
             'username'           => $data['username'] ?? null,
+            'email'              => $data['email'] ?? null,
+            'nextcloud_account'  => $data['nextcloud_account'] ?? null,
             'encrypted_password' => $encPwd,
             'iv'                 => $iv,
             'url'                => $data['url'] ?? null,
@@ -42,6 +44,8 @@ class CredentialService
             'image_id'           => $data['image_id'] ?? null,
             'name'               => $data['name'],
             'username'           => $data['username'] ?? null,
+            'email'              => $data['email'] ?? null,
+            'nextcloud_account'  => $data['nextcloud_account'] ?? null,
             'encrypted_password' => $encPwd,
             'iv'                 => $iv,
             'url'                => $data['url'] ?? null,
@@ -73,6 +77,14 @@ class CredentialService
 
         if (array_key_exists('username', $data)) {
             $updates['username'] = $data['username'];
+        }
+
+        if (array_key_exists('email', $data)) {
+            $updates['email'] = $data['email'];
+        }
+
+        if (array_key_exists('nextcloud_account', $data)) {
+            $updates['nextcloud_account'] = $data['nextcloud_account'];
         }
 
         if (array_key_exists('image_id', $data)) {

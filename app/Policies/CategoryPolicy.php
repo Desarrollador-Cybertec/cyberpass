@@ -43,4 +43,9 @@ class CategoryPolicy
         return $user->isSysAdmin()
             || ($user->isOrgAdmin() && $user->organization_id === $category->organization_id);
     }
+
+    public function replicate(User $user): bool
+    {
+        return $user->isSysAdmin();
+    }
 }
