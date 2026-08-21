@@ -11,7 +11,6 @@ use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CredentialController;
-use App\Http\Controllers\CredentialExportController;
 use App\Http\Controllers\CredentialImportController;
 use App\Http\Controllers\VaultCategoryController;
 use App\Http\Controllers\VaultCredentialController;
@@ -137,7 +136,6 @@ Route::middleware([
             Route::get('audit-logs', [AuditLogController::class, 'forOrganization']);
 
             Route::get('credentials', [CredentialSearchController::class, 'index']);
-            Route::get('credentials/export', [CredentialExportController::class, 'export'])->middleware('throttle:3,60');
         });
 
         Route::get('audit-logs', [AuditLogController::class, 'index']);

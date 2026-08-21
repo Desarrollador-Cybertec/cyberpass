@@ -64,7 +64,6 @@ it('rejects an integration token on every legacy route', function (string $metho
     'reveal credential' => ['GET', fn ($cat, $cred) => "/api/categories/{$cat}/credentials/{$cred}/reveal"],
     'vault categories'  => ['GET', fn () => '/api/vault/categories'],
     'share link'        => ['POST', fn ($cat, $cred) => "/api/credentials/{$cred}/tokens"],
-    'org export'        => ['GET', fn ($cat, $cred, $org) => "/api/organizations/{$org}/credentials/export"],
     'audit logs'        => ['GET', fn () => '/api/audit-logs'],
 ]);
 
