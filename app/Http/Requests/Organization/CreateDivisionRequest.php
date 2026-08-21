@@ -11,6 +11,11 @@ class CreateDivisionRequest extends FormRequest
         return $this->user()->can('manageDivisions', $this->route('organization'));
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge(['is_active' => $this->boolean('is_active', true)]);
+    }
+
     public function rules(): array
     {
         return [
